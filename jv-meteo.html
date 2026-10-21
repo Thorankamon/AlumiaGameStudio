@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion de la météo</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top,#tools{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+#tools{background:#334155;font-size:12px}
+button,select,input{font:inherit}
+button{background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}
+select,input[type=text]{padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1e293b}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+aside{background:#f8fafc;overflow:auto;padding:8px;flex-shrink:0}
+#L{width:220px;border-right:1px solid #cbd5e1}#R{width:310px;border-left:1px solid #cbd5e1}
+#C{flex:1;display:flex;flex-direction:column;min-width:0}
+#view{flex:1;overflow:auto;background:#475569;display:flex;align-items:center;justify-content:center;padding:12px}
+#cv{max-width:100%;max-height:100%;background:#000;border-radius:6px}
+.bt{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}.bt button:first-child{grid-column:1/3}
+.it{padding:6px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent}.it:hover{background:#e2e8f0}.it.on{background:#bfdbfe;border-color:#3b82f6}
+h4{margin:12px 0 5px;font-size:13px}h4:first-child{margin-top:0}
+.f{display:flex;align-items:center;gap:6px;margin:4px 0}.f label{flex:1}.f input[type=range]{width:120px}.f span{width:34px;text-align:right;color:#64748b}.f select{width:150px}
+.pre{display:flex;flex-wrap:wrap;gap:4px}.pre button{background:#e2e8f0;color:#1e293b;padding:3px 8px}
+.hint,#info{color:#64748b;font-size:12px}#info{background:#f1f5f9;padding:4px 10px}
+</style>
+</head>
+<body>
+<div id="top"><b>🌦️ Gestion de la météo</b><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="L"><div class="bt"><button id="bNew">＋ Nouvelle météo</button><button class="g" id="bRen">✏️ Renommer</button><button class="g" id="bDup">⧉ Dupliquer</button><button class="r" id="bDel" style="grid-column:1/3">🗑 Supprimer</button></div>
+  <h4>Mes météos</h4><div id="list"></div></aside>
+ <section id="C">
+  <div id="tools"><label>Décor de test :</label><select id="bg"><option value="day">☀️ Jour</option><option value="dusk">🌆 Crépuscule</option><option value="night">🌙 Nuit</option><option value="grey">☁️ Gris</option><option value="img">🖼 Image du projet…</option></select>
+   <select id="bgImg" hidden></select><button class="g" id="bPlay">⏸ Pause</button><button class="g" id="bLt">⚡ Éclair</button><button class="g" id="bTr">↻ Rejouer la transition</button><button class="g" id="bSnd">🔊 Écouter le son</button></div>
+  <div id="view"><canvas id="cv" width="960" height="540"></canvas></div><div id="info">Aperçu en direct : tout ce que tu règles à droite se voit tout de suite.</div>
+ </section>
+ <aside id="R">
+  <h4>Partir d'un modèle</h4><div class="pre" id="pre"></div>
+  <h4>Particules</h4>
+  <div class="f"><label>Forme</label><select data-k="shape"><option value="line">Traînées (pluie, sable)</option><option value="dot">Points (neige)</option><option value="leaf">Feuilles</option><option value="ember">Braises</option></select></div>
+  <div class="f"><label>Quantité</label><input type="range" data-k="count" min="0" max="1500" step="10"><span data-v="count"></span></div>
+  <div class="f"><label>Vitesse (− = monte)</label><input type="range" data-k="speed" min="-100" max="200" step="1"><span data-v="speed"></span></div>
+  <div class="f"><label>Taille</label><input type="range" data-k="size" min="0.5" max="12" step="0.5"><span data-v="size"></span></div>
+  <div class="f"><label>Longueur traînées</label><input type="range" data-k="len" min="0" max="60" step="1"><span data-v="len"></span></div>
+  <div class="f"><label>Vent (← gauche · droite →)</label><input type="range" data-k="wind" min="-150" max="150" step="1"><span data-v="wind"></span></div>
+  <div class="f"><label>Ondulation</label><input type="range" data-k="wobble" min="0" max="100" step="1"><span data-v="wobble"></span></div>
+  <div class="f"><label>Opacité</label><input type="range" data-k="opa" min="0" max="100" step="1"><span data-v="opa"></span></div>
+  <div class="f"><label>Couleur</label><input type="color" data-k="color"></div>
+  <h4>Ambiance (jour / nuit…)</h4>
+  <div class="f"><label>Teinte</label><input type="color" data-k="tint"></div>
+  <div class="f"><label>Intensité de la teinte</label><input type="range" data-k="tintOp" min="0" max="100" step="1"><span data-v="tintOp"></span></div>
+  <div class="f"><label>Assombrissement</label><input type="range" data-k="dark" min="0" max="100" step="1"><span data-v="dark"></span></div>
+  <h4>Brouillard</h4>
+  <div class="f"><label>Couleur</label><input type="color" data-k="fogCol"></div>
+  <div class="f"><label>Densité</label><input type="range" data-k="fogOp" min="0" max="100" step="1"><span data-v="fogOp"></span></div>
+  <h4>Éclairs</h4>
+  <label class="f"><input type="checkbox" data-k="lt"> Activer les éclairs</label>
+  <div class="f"><label>Toutes les (s)</label><input type="range" data-k="ltEvery" min="2" max="30" step="1"><span data-v="ltEvery"></span></div>
+  <div class="f"><label>Puissance</label><input type="range" data-k="ltPower" min="10" max="100" step="1"><span data-v="ltPower"></span></div>
+  <h4>Son</h4>
+  <div class="f"><label>Fichier (boucle)</label><select data-k="snd" id="sndSel"></select></div>
+  <div class="f"><label>Volume</label><input type="range" data-k="vol" min="0" max="100" step="1"><span data-v="vol"></span></div>
+  <h4>Transition</h4>
+  <div class="f"><label>Fondu (secondes)</label><input type="range" data-k="fade" min="0" max="20" step="0.5"><span data-v="fade"></span></div>
+ </aside>
+</div>
+<script src="studio-api.js"></script>
+<script>
+const $=id=>document.getElementById(id),cv=$("cv"),cx=cv.getContext("2d");
+const col=()=>Studio.col("meteo","meteo");
+const D={shape:"line",count:0,speed:60,size:2,len:18,wind:10,wobble:0,color:"#bcd4ff",opa:70,tint:"#0b1e5a",tintOp:0,dark:0,fogCol:"#cfd8dc",fogOp:0,lt:false,ltEvery:8,ltPower:70,snd:"",vol:60,fade:3};
+const MODELS={"🌧 Pluie":{name:"Pluie",count:300,speed:70,size:1.5,len:22,wind:12,color:"#aecbff",opa:65,tint:"#1c2b4d",tintOp:12,dark:15},
+ "⛈ Orage":{name:"Orage",count:550,speed:95,size:1.5,len:26,wind:28,color:"#aecbff",opa:65,tint:"#10182e",tintOp:25,dark:40,lt:true,ltEvery:6,ltPower:80},
+ "❄️ Neige":{name:"Neige",shape:"dot",count:220,speed:14,size:3,len:0,wind:6,wobble:40,color:"#ffffff",opa:90,tint:"#dce8ff",tintOp:8},
+ "🌫 Brouillard":{name:"Brouillard",count:0,fogOp:60,fogCol:"#d5dbe0",dark:10},
+ "🌙 Nuit":{name:"Nuit",count:0,tint:"#0b1e5a",tintOp:45,dark:25},
+ "🌆 Crépuscule":{name:"Crépuscule",count:0,tint:"#ff7a1a",tintOp:22,dark:12},
+ "🏜 Tempête de sable":{name:"Tempête de sable",count:500,speed:6,size:2,len:10,wind:90,color:"#d9b36c",opa:60,tint:"#b8892f",tintOp:25,fogOp:25,fogCol:"#c9a15a"},
+ "🍂 Feuilles":{name:"Feuilles",shape:"leaf",count:40,speed:30,size:5,wind:30,wobble:60,color:"#d97706",opa:95},
+ "🔥 Braises":{name:"Braises",shape:"ember",count:80,speed:-25,size:2,wind:4,wobble:30,color:"#ff8a1f",opa:90,tint:"#ff5a00",tintOp:10,dark:20}};
+let M=null,W={...D},parts=[],fog=[],t=0,flash=0,nextL=4,last=0,run=true,tF=0,bgImg=null,aud=null,IMGS=[],AUD=[];
+const msg=x=>{$("msg").hidden=!x;$("msg").textContent=x||""};
+const auto=Studio.autosave(()=>save(),800);
+const touch=()=>{$("st").textContent="● modifié";auto()};
+async function save(){if(!M)return;try{await col().save(M.id,Object.assign(M,W));$("st").textContent="✔ enregistré "+new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"})}catch(e){$("st").textContent="⚠ "+e.message}}
+const rgba=(h,a)=>{const n=parseInt(h.slice(1),16);return`rgba(${n>>16},${n>>8&255},${n&255},${a})`};
+// ---------- moteur d'aperçu
+function mk(init){const w=cv.width,h=cv.height;return{x:Math.random()*w*1.4-w*.3,y:init?Math.random()*h:(W.speed<0?h+10:-10-Math.random()*40),v:.7+Math.random()*.6,ph:Math.random()*6.28,rot:Math.random()*6.28,sr:(Math.random()-.5)*4}}
+function step(dt){t+=dt;tF+=dt;const w=cv.width,h=cv.height,n=Math.min(3000,Math.round(W.count*w*h/230400)),sp=W.speed*6,vx=W.wind*3;
+ while(parts.length<n)parts.push(mk(true));parts.length=Math.min(parts.length,n);
+ for(const p of parts){p.y+=sp*p.v*dt;p.x+=vx*p.v*dt+Math.sin(t*2+p.ph)*W.wobble*dt*.8;p.rot+=p.sr*dt;if(p.y>h+30||p.y<-80||p.x>w*1.3||p.x<-w*.4)Object.assign(p,mk(false))}
+ if(!fog.length)for(let i=0;i<10;i++)fog.push({x:Math.random()*w,y:h*(.2+Math.random()*.7),r:140+Math.random()*160,v:8+Math.random()*18});
+ for(const f of fog){f.x+=(f.v+W.wind*.3)*dt;if(f.x-f.r>w)f.x=-f.r;if(f.x+f.r<0)f.x=w+f.r}
+ if(W.lt){nextL-=dt;if(nextL<=0){bolt();nextL=W.ltEvery*(.5+Math.random())}}flash=Math.max(0,flash-dt*2.4)}
+function bolt(){flash=W.ltPower/100;if(Math.random()<.45)setTimeout(()=>flash=Math.max(flash,W.ltPower/130),150)}
+function back(){const w=cv.width,h=cv.height,k=$("bg").value;
+ if(k==="img"&&bgImg&&bgImg.width){cx.drawImage(bgImg,0,0,w,h);return}
+ const C={day:["#6ec3ff","#d8f0ff"],dusk:["#3b2a6b","#f59e6b"],night:["#050a1f","#1b2a55"],grey:["#6b7280","#cbd5e1"]}[k]||["#6ec3ff","#d8f0ff"],n=k==="night";
+ const g=cx.createLinearGradient(0,0,0,h*.75);g.addColorStop(0,C[0]);g.addColorStop(1,C[1]);cx.fillStyle=g;cx.fillRect(0,0,w,h);
+ cx.fillStyle=n?"#0d2b14":"#3f9a4b";cx.fillRect(0,h*.75,w,h*.25);cx.fillStyle=n?"#07200f":"#2a7a38";
+ for(let i=0;i<9;i++){const x=(i*127+40)%w,y=h*.75,s=40+(i*37)%40;cx.beginPath();cx.moveTo(x,y-s*2);cx.lineTo(x-s*.6,y);cx.lineTo(x+s*.6,y);cx.fill()}
+ cx.fillStyle="#7c5a3a";cx.fillRect(w*.68,h*.55,150,h*.2);cx.fillStyle="#9b2c2c";cx.beginPath();cx.moveTo(w*.66,h*.55);cx.lineTo(w*.68+75,h*.42);cx.lineTo(w*.7+150,h*.55);cx.fill()}
+function paint(){const w=cv.width,h=cv.height,k=W.fade>0?Math.min(1,tF/W.fade):1;back();
+ const sp=W.speed*6,vx=W.wind*3,L=Math.hypot(vx,sp)||1,ux=vx/L,uy=sp/L;cx.globalAlpha=W.opa/100*k;
+ if(W.shape==="line"){cx.strokeStyle=W.color;cx.lineWidth=W.size;cx.beginPath();for(const p of parts){cx.moveTo(p.x,p.y);cx.lineTo(p.x-ux*W.len*p.v,p.y-uy*W.len*p.v)}cx.stroke()}
+ else if(W.shape==="dot"){cx.fillStyle=W.color;cx.beginPath();for(const p of parts){const r=W.size*(.6+p.v*.4);cx.moveTo(p.x+r,p.y);cx.arc(p.x,p.y,r,0,7)}cx.fill()}
+ else if(W.shape==="leaf"){cx.fillStyle=W.color;for(const p of parts){cx.save();cx.translate(p.x,p.y);cx.rotate(p.rot);cx.beginPath();cx.ellipse(0,0,W.size*1.6,W.size*.8,0,0,7);cx.fill();cx.restore()}}
+ else{cx.globalCompositeOperation="lighter";cx.fillStyle=W.color;cx.shadowColor=W.color;cx.shadowBlur=8;for(const p of parts){cx.globalAlpha=W.opa/100*k*(.5+.5*Math.sin(t*6+p.ph));cx.beginPath();cx.arc(p.x,p.y,W.size*p.v,0,7);cx.fill()}cx.shadowBlur=0;cx.globalCompositeOperation="source-over"}
+ cx.globalAlpha=W.tintOp/100*k;cx.fillStyle=W.tint;cx.fillRect(0,0,w,h);
+ if(W.fogOp>0){cx.globalAlpha=1;for(const f of fog){const g=cx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);g.addColorStop(0,rgba(W.fogCol,W.fogOp/100*.55*k));g.addColorStop(1,rgba(W.fogCol,0));cx.fillStyle=g;cx.fillRect(f.x-f.r,f.y-f.r,f.r*2,f.r*2)}}
+ cx.globalAlpha=W.dark/100*.75*k;cx.fillStyle="#000";cx.fillRect(0,0,w,h);
+ if(flash>0){cx.globalAlpha=Math.min(1,flash);cx.fillStyle="#fff";cx.fillRect(0,0,w,h)}cx.globalAlpha=1}
+function frame(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)step(dt);paint();requestAnimationFrame(frame)}
+$("bPlay").onclick=()=>{run=!run;$("bPlay").textContent=run?"⏸ Pause":"▶ Lecture"};
+$("bLt").onclick=bolt;$("bTr").onclick=()=>tF=0;
+$("bg").onchange=e=>{$("bgImg").hidden=e.target.value!=="img";if(e.target.value==="img")loadBg()};
+$("bgImg").onchange=loadBg;
+function loadBg(){const n=$("bgImg").value;if(!n){bgImg=null;return}const i=new Image();i.onload=()=>bgImg=i;i.src=Studio.assets("images").url(n)}
+$("bSnd").onclick=()=>{if(aud){aud.pause();aud=null;$("bSnd").textContent="🔊 Écouter le son";return}if(!W.snd)return;aud=new Audio(Studio.assets("audio").url(W.snd));aud.loop=true;aud.volume=W.vol/100;aud.play().catch(()=>{});$("bSnd").textContent="⏹ Arrêter le son"};
+// ---------- panneau de réglages
+function sync(){document.querySelectorAll("#R [data-k]").forEach(i=>{const v=W[i.dataset.k];if(i.type==="checkbox")i.checked=!!v;else i.value=v});
+ document.querySelectorAll("#R [data-v]").forEach(s=>s.textContent=W[s.dataset.v]);
+ const sn=AUD.map(a=>a.name);if(W.snd&&!sn.includes(W.snd))sn.push(W.snd);$("sndSel").innerHTML='<option value="">— aucun —</option>'+sn.map(n=>`<option ${n===W.snd?"selected":""}>${n}</option>`).join("");}
+$("R").addEventListener("input",e=>{const k=e.target.dataset.k;if(!k||!M)return;const el=e.target;W[k]=el.type==="checkbox"?el.checked:(el.type==="range"?+el.value:el.value);
+ const s=document.querySelector(`[data-v="${k}"]`);if(s)s.textContent=W[k];if(k==="vol"&&aud)aud.volume=W.vol/100;if(k==="snd"&&aud){aud.pause();aud=null;$("bSnd").textContent="🔊 Écouter le son"}touch()});
+$("pre").innerHTML=Object.keys(MODELS).map(n=>`<button data-n="${n}">${n}</button>`).join("");
+$("pre").onclick=e=>{const n=e.target.dataset.n;if(!n||!M)return;const keep=W.name;W={...D,...MODELS[n]};W.name=keep;parts=[];tF=0;sync();touch()};
+// ---------- gestion des météos
+async function list(id){const l=await col().list();$("list").innerHTML=l.length?l.map(x=>`<div class="it${x.id===id?" on":""}" data-id="${x.id}">${x.name||x.id}</div>`).join(""):'<div class="hint">Aucune météo.</div>';return l}
+$("list").onclick=e=>{const r=e.target.closest(".it");if(r)load(r.dataset.id)};
+async function load(id){if(M&&$("st").textContent.startsWith("●"))await save();
+ try{M=await col().get(id);M.id=id}catch(e){msg(e.message);return}
+ W={...D,...M};delete W.id;parts=[];tF=0;if(aud){aud.pause();aud=null;$("bSnd").textContent="🔊 Écouter le son"}
+ localStorage.setItem("jv_lastmet_"+Studio.project,id);await list(id);sync();$("st").textContent=""}
+$("bNew").onclick=async()=>{const n=prompt("Nom de la nouvelle météo :","Nouvelle météo");if(!n)return;try{const r=await col().add({...D,name:n.trim()});await load(r.id)}catch(e){alert(e.message)}};
+$("bRen").onclick=async()=>{if(!M)return;const n=prompt("Nouveau nom :",W.name);if(n){W.name=n.trim();await save();await list(M.id)}};
+$("bDup").onclick=async()=>{if(!M)return;try{await save();const r=await col().add({...W,name:W.name+" (copie)"});await load(r.id)}catch(e){alert(e.message)}};
+$("bDel").onclick=async()=>{if(!M)return;let use=0;try{(await Studio.col("maps","map").getAll()).forEach(m=>{if(m&&m.meteo===M.id)use++})}catch(e){}
+ if(!confirm(`Supprimer la météo « ${W.name} » ?`+(use?`\n\n⚠ ${use} map(s) l'utilisent encore.`:"")))return;
+ try{await col().remove(M.id);M=null;const l=await list();if(l.length)await load(l[0].id);else{W={...D};sync()}}catch(e){alert(e.message)}};
+window.addEventListener("beforeunload",()=>{if(M&&$("st").textContent.startsWith("●"))save()});
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");
+ try{await Studio.ensureProject();IMGS=await Studio.assets("images").list();AUD=await Studio.assets("audio").list();
+  $("bgImg").innerHTML='<option value="">— choisir —</option>'+IMGS.map(i=>`<option>${i.name}</option>`).join("");
+  let l=await list();
+  if(!l.length){for(const n in MODELS)await col().add({...D,...MODELS[n]});l=await list()}   // premiers modèles de base
+  await load((l.find(x=>x.id===localStorage.getItem("jv_lastmet_"+Studio.project))||l[0]).id)}catch(e){msg(e.message)}}
+Studio.onProject(()=>{M=null;init()});
+sync();init();requestAnimationFrame(frame);
+</script>
+</body>
+</html>

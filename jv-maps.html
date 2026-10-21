@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des MAP</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top,#tools{display:flex;gap:6px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+#tools{background:#334155}
+button,select,input{font:inherit}
+button{background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}button.on{outline:2px solid #fbbf24;background:#2563eb}
+select,input[type=text],input[type=number]{padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1e293b}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+aside{width:280px;background:#f8fafc;overflow:auto;padding:8px;flex-shrink:0}
+#L{border-right:1px solid #cbd5e1}#R{border-left:1px solid #cbd5e1;width:310px}
+#C{flex:1;display:flex;flex-direction:column;min-width:0}
+#cvWrap{flex:1;overflow:auto;background:#94a3b8}
+canvas{display:block;image-rendering:pixelated}
+#tsWrap{overflow:auto;max-height:calc(100vh - 190px);border:1px solid #cbd5e1;background:#fff;margin-top:6px}
+h4{margin:12px 0 6px;font-size:13px}h4:first-child{margin-top:0}
+.r1{display:flex;gap:6px}
+.f{display:flex;align-items:center;gap:6px;margin:4px 0}.f label{flex:1}.f input,.f select{width:130px}
+.hint,#info{color:#64748b;font-size:12px;padding:4px 0}#info{background:#f1f5f9;padding:4px 10px}
+.ly{display:flex;align-items:center;gap:5px;padding:2px 4px;border-radius:6px;cursor:pointer}
+.ly:hover{background:#e2e8f0}.ly.on{background:#bfdbfe}.ly .ln{flex:1;white-space:nowrap;overflow:hidden}
+.ly input[type=range]{width:50px}.ly input[type=number]{width:52px;padding:1px 3px}
+.ly.sep{border-top:2px dashed #94a3b8;margin-top:4px;padding-top:4px}
+.ev{border:1px solid #cbd5e1;border-radius:8px;padding:4px 6px;margin:4px 0;background:#fff;cursor:pointer}
+.ev.on{border-color:#3b82f6;background:#eff6ff}.ev .f input,.ev .f select{width:120px}
+</style>
+</head>
+<body>
+<div id="top"><b>🗺️ Gestion des MAP</b>
+ <select id="mapSel"></select>
+ <button id="bNew">＋ Nouvelle</button><button class="g" id="bRen">✏️ Renommer</button><button class="g" id="bDup">⧉ Dupliquer</button><button class="r" id="bDel">🗑 Supprimer</button><button id="bSave">💾 Enregistrer</button><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="L"><h4>Tileset</h4>
+  <div class="r1"><select id="tsSel" style="flex:1"></select><button id="tsImp" title="Importer une image de tileset">＋</button><input type="file" id="tsFile" accept="image/*" hidden></div>
+  <div id="tsWrap"><canvas id="tc"></canvas></div><div id="tsInfo" class="hint"></div></aside>
+ <section id="C">
+  <div id="tools">
+   <button data-t="pencil" title="Crayon (B)">✏️ Crayon</button><button data-t="rect" title="Rectangle">▭ Rectangle</button><button data-t="fill" title="Remplir">🪣 Remplir</button><button data-t="erase" title="Gomme (E)">🧽 Gomme</button>
+   <span style="opacity:.5">|</span>
+   <button data-t="select" title="Sélectionner un élément">👆 Sélection</button><button data-t="event">⚙️ Event</button><button data-t="pnj">🧍 PNJ</button><button data-t="graphic">🖼️ Graphique</button><button data-t="start">🚩 Départ</button>
+   <span style="opacity:.5">|</span>
+   <button class="g" id="zOut">−</button><span id="zv">100%</span><button class="g" id="zIn">＋</button><button class="g" id="bGrid">▦ Grille</button><button class="g" id="bUndo" title="Ctrl+Z">↶ Annuler</button>
+  </div>
+  <div id="cvWrap"><canvas id="cv"></canvas></div><div id="info"></div>
+ </section>
+ <aside id="R"><h4>Paramètres de la map</h4>
+  <div class="f"><label>Type</label><select id="pType"><option>2D</option><option>3D</option></select></div>
+  <div class="f"><label>Taille X (tuiles)</label><input type="number" id="pW" min="1" max="200"></div>
+  <div class="f"><label>Taille Y (tuiles)</label><input type="number" id="pH" min="1" max="200"></div>
+  <div class="f d3"><label>Hauteur 3D (niveaux Z)</label><input type="number" id="pH3" min="1" max="100"></div>
+  <div class="f d3"><label>Profondeur 3D</label><input type="number" id="pD3" min="1" max="200"></div>
+  <div class="f"><label>Départ X</label><input type="number" id="pSX" min="0"></div>
+  <div class="f"><label>Départ Y</label><input type="number" id="pSY" min="0"></div>
+  <div class="f"><label>Musique</label><select id="pMus" style="width:100px"></select><button class="g" id="bPlay">▶</button></div>
+  <div class="f"><label>Météo</label><select id="pMet" style="width:150px"></select></div>
+  <h4>Couches <span class="hint">(clic = couche active)</span></h4><div id="lays"></div>
+  <button class="g" id="bClr" style="margin-top:6px">Vider la couche active</button>
+  <h4>Éléments sur la map</h4><div id="evs"></div>
+ </aside>
+</div>
+<script src="studio-api.js"></script>
+<script src="studio-chars.js"></script>
+<script src="studio-events.js"></script>
+<script>
+const $=id=>document.getElementById(id),LAY=10,cv=$("cv"),tc=$("tc");
+const colMaps=()=>Studio.col("maps","map"),colTs=()=>Studio.col("tilesets","tileset");
+let tintC=null,tintK="";
+let M=null,TS=null,tsImg=null,sel={x:0,y:0,w:1,h:1},tool="pencil",cur={g:"f",i:0},zoom=1,grid=true,undo=[],selEv=null,drag=null,hover=null,IMGS=[],AUD=[],METS=[],tsDrag=null,audio=null;
+const EV=["event","pnj","graphic","start","select"],cache={};
+const img=u=>{if(!cache[u]){const i=new Image();i.onload=()=>{draw();drawTs()};i.src=u;cache[u]=i}return cache[u]};
+const mk=(w,h)=>Array.from({length:LAY},()=>new Array(w*h).fill(0));
+const ts=()=>(TS&&TS.tileSize)||32;
+const LA=()=>cur.g==="b"?M.back[cur.i]:M.front[cur.i];
+const LM=()=>cur.g==="b"?M.meta.back[cur.i]:M.meta.front[cur.i];
+function msg(t){$("msg").hidden=!t;$("msg").textContent=t||""}
+function newMap(name){const w=30,h=20;return{name,type:"2D",width:w,height:h,h3d:3,d3d:10,music:"",meteo:"",startX:1,startY:1,tilesetId:"",back:mk(w,h),front:mk(w,h),
+ meta:{back:Array.from({length:LAY},(_,i)=>({v:1,o:1,s:+(1+i*.15).toFixed(2)})),front:Array.from({length:LAY},()=>({v:1,o:1,z:0}))},events:[]}}
+const auto=Studio.autosave(()=>saveMap(),1500);
+function touch(){$("st").textContent="● modifié";auto()}
+async function saveMap(){if(!M||!M.id)return;try{await colMaps().save(M.id,M);$("st").textContent="✔ enregistré "+new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"})}catch(e){$("st").textContent="⚠ "+e.message}}
+
+// ---------- dessin de la map
+function draw(){
+ if(!M)return;const t=ts(),W=M.width*t,H=M.height*t;
+ if(cv.width!==W*zoom||cv.height!==H*zoom){cv.width=W*zoom;cv.height=H*zoom}
+ const c=cv.getContext("2d");c.setTransform(zoom,0,0,zoom,0,0);c.imageSmoothingEnabled=false;
+ c.fillStyle="#cbd5e1";c.fillRect(0,0,W,H);c.fillStyle="#e2e8f0";
+ for(let y=0;y<M.height;y++)for(let x=0;x<M.width;x++)if((x+y)%2)c.fillRect(x*t,y*t,t,t);
+ const cols=tsImg&&tsImg.width?Math.floor(tsImg.width/t):0,SRC=cols?srcImg():null;
+ const layer=(L,m,back)=>{if(!m.v||!cols)return;c.save();c.globalAlpha=m.o;
+  if(back){c.translate(W/2,H/2);c.scale(m.s,m.s);c.translate(-W/2,-H/2)}
+  for(let i=0;i<L.length;i++){const id=L[i];if(!id)continue;const k=id-1;c.drawImage(SRC,(k%cols)*t,((k/cols)|0)*t,t,t,(i%M.width)*t,((i/M.width)|0)*t,t,t)}c.restore()};
+ for(let i=LAY-1;i>=0;i--)layer(M.back[i],M.meta.back[i],true);
+ for(let i=0;i<LAY;i++)layer(M.front[i],M.meta.front[i],false);
+ if(grid){c.strokeStyle="rgba(0,0,0,.18)";c.lineWidth=1/zoom;c.beginPath();
+  for(let x=0;x<=M.width;x++){c.moveTo(x*t,0);c.lineTo(x*t,H)}for(let y=0;y<=M.height;y++){c.moveTo(0,y*t);c.lineTo(W,y*t)}c.stroke()}
+ const col={event:"#f59e0b",pnj:"#10b981",graphic:"#a855f7"},ch={event:"E",pnj:"P",graphic:"G"};
+ c.fillStyle="#fff";c.font="bold "+t*.5+"px sans-serif";c.textAlign="center";c.textBaseline="middle";
+ M.events.forEach(v=>{const p0=(v.pages&&v.pages[0])||{},g0=p0.g||{},tr=p0.o&&p0.o.transp,c0=g0.char?CHD(g0.char):null;let spr=false;const gi=g0.img?img(Studio.assets("images").url(g0.img)):null;
+  if(gi&&gi.width){const k=(g0.scale||100)/100,w=gi.width*k,h=gi.height*k;c.save();c.globalAlpha=(g0.op==null?100:g0.op)/100;c.globalCompositeOperation=({add:"lighter",multiply:"multiply",screen:"screen",overlay:"overlay"})[g0.blend]||"source-over";c.translate(v.x*t+t/2,v.y*t+t/2);c.rotate((+g0.rot||0)*Math.PI/180);c.drawImage(gi,-w/2,-h/2,w,h);c.restore();spr=true}
+  else if(c0&&c0.img){const s=c0.data,k=(s.scale||100)/100,w=s.fw*k,h=s.fh*k;c.drawImage(c0.img,(g0.c||0)*s.fw,(+g0.r||0)*s.fh,s.fw,s.fh,v.x*t+t/2-w/2,v.y*t+t-h,w,h);spr=true}
+  if(!spr){c.fillStyle=col[v.kind]+(tr?"88":"cc");c.fillRect(v.x*t+2,v.y*t+2,t-4,t-4);c.fillStyle="#fff";c.fillText(ch[v.kind],v.x*t+t/2,v.y*t+t/2)}
+  else if(tr){c.setLineDash([4,3]);c.strokeStyle="#a855f7";c.lineWidth=2/zoom;c.strokeRect(v.x*t,v.y*t,t,t);c.setLineDash([])}
+  if(v.id===selEv){c.strokeStyle="#2563eb";c.lineWidth=3/zoom;c.strokeRect(v.x*t,v.y*t,t,t)}});
+ c.fillStyle="#16a34a";c.beginPath();c.arc(M.startX*t+t/2,M.startY*t+t/2,t*.35,0,7);c.fill();c.fillStyle="#fff";c.fillText("S",M.startX*t+t/2,M.startY*t+t/2);
+ c.lineWidth=2/zoom;c.strokeStyle="#ef4444";
+ if(drag&&tool==="rect"){const a=drag.a,b=drag.b;c.strokeRect(Math.min(a.x,b.x)*t,Math.min(a.y,b.y)*t,(Math.abs(a.x-b.x)+1)*t,(Math.abs(a.y-b.y)+1)*t)}
+ else if(hover){const w=["pencil","fill"].includes(tool)?sel.w:1,h=["pencil","fill"].includes(tool)?sel.h:1;c.strokeRect(hover.x*t,hover.y*t,w*t,h*t)}
+}
+function cell(e,raw){const r=cv.getBoundingClientRect(),t=ts(),W=M.width*t,H=M.height*t;let px=(e.clientX-r.left)/zoom,py=(e.clientY-r.top)/zoom;
+ if(!raw&&cur.g==="b"){const s=M.meta.back[cur.i].s;px=W/2+(px-W/2)/s;py=H/2+(py-H/2)/s}
+ return{x:Math.floor(px/t),y:Math.floor(py/t)}}
+// ---------- outils
+function set(L,x,y,v){if(x>=0&&y>=0&&x<M.width&&y<M.height)L[y*M.width+x]=v}
+function tid(dx,dy){const cols=Math.floor(tsImg.width/ts()),m=(a,n)=>((a%n)+n)%n;return(sel.y+m(dy,sel.h))*cols+sel.x+m(dx,sel.w)+1}
+const ready=()=>tsImg&&tsImg.width;
+function pushUndo(){undo.push({g:cur.g,i:cur.i,d:LA().slice()});if(undo.length>60)undo.shift()}
+function paint(p){const L=LA();if(tool==="erase")set(L,p.x,p.y,0);else if(ready())for(let dy=0;dy<sel.h;dy++)for(let dx=0;dx<sel.w;dx++)set(L,p.x+dx,p.y+dy,tid(dx,dy));touch()}
+function rectFill(a,b){const L=LA(),x0=Math.min(a.x,b.x),x1=Math.max(a.x,b.x),y0=Math.min(a.y,b.y),y1=Math.max(a.y,b.y);
+ if(!ready())return;for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)set(L,x,y,tid(x-x0,y-y0));touch()}
+function fill(p){if(!ready()||p.x<0||p.y<0||p.x>=M.width||p.y>=M.height)return;const L=LA(),w=M.width,tg=L[p.y*w+p.x],seen=new Uint8Array(L.length),st=[[p.x,p.y]];
+ while(st.length){const[x,y]=st.pop();if(x<0||y<0||x>=w||y>=M.height)continue;const i=y*w+x;if(seen[i]||L[i]!==tg)continue;seen[i]=1;L[i]=tid(x-p.x,y-p.y);st.push([x+1,y],[x-1,y],[x,y+1],[x,y-1])}touch()}
+function evClick(p){if(p.x<0||p.y<0||p.x>=M.width||p.y>=M.height)return;
+ const f=M.events.find(v=>v.x===p.x&&v.y===p.y);
+ if(tool==="start"){M.startX=p.x;M.startY=p.y;touch();sync()}
+ else if(f)selEv=f.id;
+ else if(tool!=="select"){const id=M.events.reduce((a,v)=>Math.max(a,v.id),0)+1,nm={event:"Event",pnj:"PNJ",graphic:"Graphique"};
+  M.events.push({id,kind:tool,name:nm[tool]+" "+id,x:p.x,y:p.y,z:0,note:"",pages:Events.blank(tool).pages});selEv=id;touch()}
+ evList();draw()}
+cv.onpointerdown=e=>{if(!M||e.button)return;cv.setPointerCapture(e.pointerId);
+ if(EV.includes(tool)){evClick(cell(e,true));return}
+ const p=cell(e);pushUndo();drag={a:p,b:p};
+ if(tool==="fill"){fill(p);drag=null}else if(tool!=="rect")paint(p);draw()};
+cv.onpointermove=e=>{if(!M)return;hover=cell(e,EV.includes(tool));
+ if(drag){drag.b=cell(e);if(tool==="pencil"||tool==="erase")paint(drag.b)}
+ $("info").textContent=`X ${hover.x}  Y ${hover.y}  —  couche active : ${layName(cur.g,cur.i)}  —  outil : ${tool}`;draw()};
+cv.onpointerleave=()=>{hover=null;draw()};
+cv.onpointerup=()=>{if(drag&&tool==="rect")rectFill(drag.a,drag.b);drag=null;draw()};
+function doUndo(){const u=undo.pop();if(!u)return;(u.g==="b"?M.back:M.front)[u.i]=u.d;touch();draw()}
+// ---------- tileset
+function drawTs(){const c=tc.getContext("2d");
+ if(!ready()){tc.width=250;tc.height=60;c.fillStyle="#64748b";c.font="12px sans-serif";c.fillText("Aucun tileset sélectionné",10,30);return}
+ const t=ts();tc.width=tsImg.width;tc.height=tsImg.height;c.drawImage(tsImg,0,0);c.strokeStyle="rgba(0,0,0,.25)";c.beginPath();
+ for(let x=0;x<=tc.width;x+=t){c.moveTo(x,0);c.lineTo(x,tc.height)}for(let y=0;y<=tc.height;y+=t){c.moveTo(0,y);c.lineTo(tc.width,y)}c.stroke();
+ c.fillStyle="rgba(251,191,36,.35)";c.fillRect(sel.x*t,sel.y*t,sel.w*t,sel.h*t);c.strokeStyle="#f59e0b";c.lineWidth=2;c.strokeRect(sel.x*t,sel.y*t,sel.w*t,sel.h*t);
+ $("tsInfo").textContent=`${TS.name} — tuiles de ${t}px — sélection ${sel.w}×${sel.h} (glisse pour en prendre plusieurs)`}
+function tsCell(e){const r=tc.getBoundingClientRect(),t=ts();return{x:Math.max(0,Math.min(Math.floor(tsImg.width/t)-1,Math.floor((e.clientX-r.left)/t))),y:Math.max(0,Math.min(Math.floor(tsImg.height/t)-1,Math.floor((e.clientY-r.top)/t)))}}
+const tsSet=(a,b)=>{sel={x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Math.abs(a.x-b.x)+1,h:Math.abs(a.y-b.y)+1};drawTs()};
+tc.onpointerdown=e=>{if(!ready())return;tc.setPointerCapture(e.pointerId);tsDrag=tsCell(e);tsSet(tsDrag,tsDrag)};
+tc.onpointermove=e=>{if(tsDrag)tsSet(tsDrag,tsCell(e))};tc.onpointerup=()=>{tsDrag=null;if(tool==="erase")setTool("pencil")};
+function srcImg(){const k=JSON.stringify(TS&&TS.tint||0);if(!tintC||k!==tintK){tintC=Studio.tintImage(tsImg,TS&&TS.tint);tintK=k}return tintC}
+async function loadTileset(){TS=null;tsImg=null;tintC=null;sel={x:0,y:0,w:1,h:1};
+ if(M&&M.tilesetId){try{TS=await colTs().get(M.tilesetId);tsImg=img(Studio.assets("tilesets").url(TS.image))}catch(e){msg("Tileset introuvable : "+e.message)}}
+ drawTs();draw()}
+async function loadTsList(selId){const l=await colTs().list();$("tsSel").innerHTML='<option value="">— choisir un tileset —</option>'+l.map(x=>`<option value="${x.id}">${x.name||x.id}</option>`).join("");$("tsSel").value=selId||""}
+$("tsSel").onchange=async e=>{M.tilesetId=e.target.value;touch();await loadTileset()};
+$("tsImp").onclick=()=>$("tsFile").click();
+$("tsFile").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+ const name=prompt("Nom du tileset :",f.name.replace(/\.[^.]+$/,""));if(!name)return;const size=parseInt(prompt("Taille d'une tuile en pixels :",32))||32;
+ try{const up=await Studio.assets("tilesets").upload(f),r=await colTs().add({name,image:up.name,tileSize:size});M.tilesetId=r.id;await loadTsList(r.id);touch();await loadTileset()}catch(x){alert(x.message)}};
+// ---------- panneau de droite
+function layName(g,i){return g==="b"?"Arrière "+(i+1):(i?"Couche "+(i+1):"Couche 1 (base)")}
+function layers(){let h="";const row=(g,i)=>{const m=g==="b"?M.meta.back[i]:M.meta.front[i],on=cur.g===g&&cur.i===i;
+ h+=`<div class="ly${on?" on":""}${g==="f"&&i===0?" sep":""}" data-g="${g}" data-i="${i}"><input type="checkbox" class="v" ${m.v?"checked":""} title="Afficher"><span class="ln">${layName(g,i)}</span><input type="range" class="o" min="0" max="1" step=".05" value="${m.o}" title="Opacité">${g==="b"?`<input type="number" class="s" step=".05" min=".2" max="4" value="${m.s}" title="Échelle : plus c'est loin, plus c'est grand">`:(M.type==="3D"?`<input type="number" class="z" step="1" value="${m.z}" title="Niveau Z (3D)">`:"")}</div>`};
+ for(let i=LAY-1;i>=0;i--)row("b",i);for(let i=0;i<LAY;i++)row("f",i);$("lays").innerHTML=h}
+$("lays").onclick=e=>{const r=e.target.closest(".ly");if(!r||e.target.tagName==="INPUT")return;cur={g:r.dataset.g,i:+r.dataset.i};layers()};
+$("lays").oninput=e=>{const r=e.target.closest(".ly");if(!r)return;const m=(r.dataset.g==="b"?M.meta.back:M.meta.front)[+r.dataset.i],c=e.target.className;
+ if(c==="v")m.v=e.target.checked?1:0;else if(c==="o")m.o=+e.target.value;else if(c==="s")m.s=+e.target.value||1;else if(c==="z")m.z=+e.target.value||0;touch();draw()};
+$("bClr").onclick=()=>{if(confirm("Vider "+layName(cur.g,cur.i)+" ?")){pushUndo();LA().fill(0);touch();draw()}};
+const EVI={event:"⚙️",pnj:"🧍",graphic:"🖼️"},esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const chc={};function CHD(id){if(!(id in chc)){chc[id]=null;Events.charGet(id).then(r=>{chc[id]=r;draw()})}return chc[id]}
+const sp=(o,k,v)=>{const q=k.split(".");let a=o;while(q.length>1){const n=q.shift();a=a[n]=a[n]||{}}a[q[0]]=v};
+const selOpt=(o,cur)=>o.map(x=>`<option value="${esc(x[0])}" ${String(x[0])===String(cur)?"selected":""}>${esc(x[1])}</option>`).join("");
+function evList(){const chars=[["","— aucun —"]].concat((Events.ctx.chars||[]).map(c=>[c.id,c.name||c.id]));
+ $("evs").innerHTML=M.events.length?M.events.map(v=>{const on=v.id===selEv,p=(v.pages&&v.pages[0])||Events.page();
+  return`<div class="ev${on?" on":""}" data-id="${v.id}"><b>${EVI[v.kind]||"⚙️"} ${esc(v.name)}</b> <span class="hint">ID ${v.id} · (${v.x},${v.y})</span>`+(on?`
+ <div class="f"><label>Nom</label><input type="text" data-f="name" value="${esc(v.name)}"></div>
+ <div class="f"><label>X</label><input type="number" data-f="x" value="${v.x}"></div><div class="f"><label>Y</label><input type="number" data-f="y" value="${v.y}"></div>
+ ${M.type==="3D"?`<div class="f"><label>Z</label><input type="number" data-f="z" value="${v.z||0}"></div>`:""}
+ <div class="hint">Réglages rapides (page 1) :</div>
+ ${v.kind!=="event"?`<div class="f"><label>Character</label><select data-p="g.char">${selOpt(chars,p.g&&p.g.char)}</select></div><div class="f"><label>Direction</label><select data-p="g.r">${selOpt([["0","Bas"],["1","Gauche"],["2","Droite"],["3","Haut"]],p.g&&p.g.r)}</select></div><div class="f"><label>…ou une image</label><select data-p="g.img">${selOpt([["","— aucune —"]].concat((Events.ctx.images||[]).map(i=>[i.name,i.name])),p.g&&p.g.img)}</select></div>`:""}
+ <div class="f"><label>Priorité / héros</label><select data-p="p.hero">${selOpt([["dessous","Sous le héros"],["meme","Même niveau"],["dessus","Au-dessus"]],p.p&&p.p.hero)}</select></div>
+ <div class="f"><label>Priorité / décor</label><select data-p="p.tiles">${selOpt([["dessous","Sous le décor"],["meme","Même niveau"],["dessus","Au-dessus"]],p.p&&p.p.tiles)}</select></div>
+ <div class="f"><label>Déclencheur</label><select data-p="trig">${selOpt([["action","Touche d'action"],["contact_hero","Contact héros"],["contact_event","Contact de l'event"],["auto","Automatique"],["parallel","Parallèle"],["none","Aucun"]],p.trig)}</select></div>
+ <label class="f"><input type="checkbox" data-p="o.transp" ${p.o&&p.o.transp?"checked":""}> Transparent (invisible)</label>
+ <div class="hint">${Events.summary(v)}</div>
+ <button data-a="edit" style="width:100%;margin:4px 0">⚙ Éditer en détail (pages, commandes, messages…)</button>
+ <div style="display:flex;gap:4px"><button class="g" data-a="tpl">📚 Depuis un modèle</button><button class="g" data-a="save">⭐ Comme modèle</button><button class="r" data-del="1">Supprimer</button></div>`:"")+`</div>`}).join(""):'<div class="hint">Choisis ⚙️ Event, 🧍 PNJ ou 🖼️ Graphique puis clique sur la map.</div>'}
+const cl=o=>JSON.parse(JSON.stringify(o));
+$("evs").onclick=async e=>{const r=e.target.closest(".ev");if(!r)return;const id=+r.dataset.id,v=M.events.find(x=>x.id===id),a=e.target.dataset.a;
+ if(e.target.dataset.del){if(!confirm("Supprimer cet event ?"))return;M.events=M.events.filter(x=>x.id!==id);selEv=null;touch();evList();draw()}
+ else if(a==="edit"){const res=await Events.modal(v,{title:`Event « ${v.name} » — ID ${v.id}`});if(res){v.name=res.name||v.name;v.note=res.note;v.pages=res.pages;touch();evList();draw()}}
+ else if(a==="tpl"){const col=Studio.col("events","event"),l=await col.list();if(!l.length){alert("Aucun modèle : crée-en dans « Gestion des Events » ou avec ⭐ Comme modèle.");return}
+  const n=prompt("Quel modèle insérer ?\n\n"+l.map((x,i)=>`${i+1}. ${x.name||x.id}`).join("\n")+"\n\nNuméro :","1"),t=l[(parseInt(n)||0)-1];if(!t)return;
+  const full=await col.get(t.id);v.pages=cl(full.pages);v.note=full.note||"";if(!v.name||/^(Event|PNJ|Graphique) \d+$/.test(v.name))v.name=full.name||v.name;touch();evList();draw()}
+ else if(a==="save"){try{await Studio.col("events","event").add({name:v.name,note:v.note||"",kind:v.kind,pages:cl(v.pages)});alert("Enregistré dans la bibliothèque d'events.")}catch(x){alert(x.message)}}
+ else if(!["INPUT","SELECT"].includes(e.target.tagName)&&selEv!==id){selEv=id;evList();draw()}};
+$("evs").onchange=async e=>{const f=e.target.dataset.f,pk=e.target.dataset.p,v=M.events.find(x=>x.id===selEv);if(!v)return;
+ if(f){v[f]=["x","y","z"].includes(f)?(+e.target.value||0):e.target.value;touch();evList();draw();return}
+ if(pk){const p=v.pages[0],val=e.target.type==="checkbox"?e.target.checked:e.target.value;sp(p,pk,val);
+  if(pk==="g.char"){const c=await Events.charGet(val);p.g.r="0";p.g.c=c&&c.data.format==="mz"?1:0}touch();evList();draw()}};
+function sync(){$("pType").value=M.type;$("pW").value=M.width;$("pH").value=M.height;$("pH3").value=M.h3d;$("pD3").value=M.d3d;$("pSX").value=M.startX;$("pSY").value=M.startY;
+ document.querySelectorAll(".d3").forEach(d=>d.style.display=M.type==="3D"?"":"none");
+ const mus=AUD.map(a=>a.name);if(M.music&&!mus.includes(M.music))mus.push(M.music);
+ $("pMus").innerHTML='<option value="">— aucune —</option>'+mus.map(n=>`<option ${n===M.music?"selected":""}>${n}</option>`).join("");$("pMet").innerHTML='<option value="">— aucune —</option>'+METS.map(m=>`<option value="${m.id}" ${m.id===M.meteo?"selected":""}>${m.name||m.id}</option>`).join("");layers();evList()}
+const num=(id,k,min,max)=>$(id).onchange=e=>{M[k]=Math.max(min,Math.min(max,parseInt(e.target.value)||min));sync();touch();draw()};
+num("pH3","h3d",1,100);num("pD3","d3d",1,200);
+$("pSX").onchange=e=>{M.startX=Math.max(0,Math.min(M.width-1,parseInt(e.target.value)||0));sync();touch();draw()};
+$("pSY").onchange=e=>{M.startY=Math.max(0,Math.min(M.height-1,parseInt(e.target.value)||0));sync();touch();draw()};
+$("pType").onchange=e=>{M.type=e.target.value;sync();touch()};
+$("pMus").onchange=e=>{M.music=e.target.value;if(audio){audio.pause();audio=null;$("bPlay").textContent="▶"}touch()};
+$("pMet").onchange=e=>{M.meteo=e.target.value;touch()};
+$("bPlay").onclick=()=>{if(audio){audio.pause();audio=null;$("bPlay").textContent="▶";return}if(!M.music)return;audio=new Audio(Studio.assets("audio").url(M.music));audio.loop=true;audio.play().catch(()=>{});$("bPlay").textContent="⏹"};
+function resize(w,h){const ow=M.width,oh=M.height,cp=L=>{const n=new Array(w*h).fill(0);for(let y=0;y<Math.min(h,oh);y++)for(let x=0;x<Math.min(w,ow);x++)n[y*w+x]=L[y*ow+x];return n};
+ M.back=M.back.map(cp);M.front=M.front.map(cp);M.width=w;M.height=h;M.startX=Math.min(M.startX,w-1);M.startY=Math.min(M.startY,h-1);undo=[]}
+const dim=(id,k)=>$(id).onchange=e=>{const v=Math.max(1,Math.min(200,parseInt(e.target.value)||1)),o=k==="w"?M.width:M.height;
+ if(v<o&&!confirm("Réduire la map coupera ce qui dépasse. Continuer ?")){sync();return}resize(k==="w"?v:M.width,k==="h"?v:M.height);sync();touch();draw()};
+dim("pW","w");dim("pH","h");
+// ---------- barre d'outils / zoom
+function setTool(t){tool=t;document.querySelectorAll("#tools [data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===t))}
+document.querySelectorAll("#tools [data-t]").forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+const setZoom=z=>{zoom=Math.max(.25,Math.min(4,z));$("zv").textContent=Math.round(zoom*100)+"%";draw()};
+$("zIn").onclick=()=>setZoom(zoom+.25);$("zOut").onclick=()=>setZoom(zoom-.25);$("bGrid").onclick=()=>{grid=!grid;draw()};$("bUndo").onclick=doUndo;
+$("cvWrap").addEventListener("wheel",e=>{if(e.ctrlKey){e.preventDefault();setZoom(zoom+(e.deltaY<0?.25:-.25))}},{passive:false});
+document.addEventListener("keydown",e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+ if(e.ctrlKey&&e.key==="z"){e.preventDefault();doUndo()}else if(e.ctrlKey&&e.key==="s"){e.preventDefault();saveMap()}
+ else if(e.key==="b")setTool("pencil");else if(e.key==="e")setTool("erase");
+ else if(e.key==="Delete"&&selEv){M.events=M.events.filter(v=>v.id!==selEv);selEv=null;touch();evList();draw()}});
+// ---------- gestion des maps
+const lastKey=()=>"jv_lastmap_"+Studio.project;
+async function mapList(selId){const l=await colMaps().list();$("mapSel").innerHTML=l.map(x=>`<option value="${x.id}">${x.name||x.id}</option>`).join("");if(selId)$("mapSel").value=selId;return l}
+async function loadMap(id){if(M&&$("st").textContent.startsWith("●"))await saveMap();
+ M=await colMaps().get(id);M.id=id;const d=newMap(M.name||id);for(const k in d)if(M[k]===undefined)M[k]=d[k];
+ if(!M.meta.back||!M.meta.front)M.meta=d.meta;M.events.forEach(v=>{if(!v.pages||!v.pages.length)v.pages=Events.blank(v.kind).pages});undo=[];selEv=null;cur={g:"f",i:0};localStorage.setItem(lastKey(),id);
+ await mapList(id);await loadTsList(M.tilesetId);await loadTileset();sync();$("st").textContent="";draw()}
+async function createMap(name,base){const m=base||newMap(name);m.name=name;delete m.id;const r=await colMaps().add(m);await loadMap(r.id)}
+$("mapSel").onchange=e=>loadMap(e.target.value);
+$("bNew").onclick=async()=>{const n=prompt("Nom de la nouvelle map :","Nouvelle map");if(n)try{await createMap(n.trim())}catch(e){alert(e.message)}};
+$("bRen").onclick=async()=>{const n=prompt("Nouveau nom de la map :",M.name);if(n){M.name=n.trim();await saveMap();await mapList(M.id)}};
+$("bDup").onclick=async()=>{try{await saveMap();const c=JSON.parse(JSON.stringify(M));await createMap(M.name+" (copie)",c)}catch(e){alert(e.message)}};
+$("bDel").onclick=async()=>{if(!confirm("Supprimer définitivement la map « "+M.name+" » ?"))return;
+ try{await colMaps().remove(M.id);M=null;$("st").textContent="";const l=await mapList();if(l.length)await loadMap(l[0].id);else await createMap("Map 1")}catch(e){alert(e.message)}};
+$("bSave").onclick=saveMap;
+window.addEventListener("beforeunload",()=>{if(M&&$("st").textContent.startsWith("●"))saveMap()});
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");
+ try{await Studio.ensureProject()}catch(e){msg(e.message);return}
+ try{await Events.ctxLoad(true);IMGS=await Studio.assets("images").list();AUD=await Studio.assets("audio").list();try{METS=await Studio.col("meteo","meteo").list()}catch(e){METS=[]}const l=await mapList();
+  if(!l.length)await createMap("Map 1");else await loadMap(l.find(x=>x.id===localStorage.getItem(lastKey()))?.id||l[0].id)}
+ catch(e){msg(e.message)}}
+Studio.onProject(()=>{M=null;init()});
+setTool("pencil");init();
+</script>
+</body>
+</html>

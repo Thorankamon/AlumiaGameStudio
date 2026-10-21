@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Édition des Characters</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top{display:flex;gap:6px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+button,select,input{font:inherit}
+button{background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 9px;cursor:pointer}
+button.g{background:#64748b}button.ok{background:#16a34a}button.r{background:#ef4444}button.on{outline:2px solid #fbbf24;background:#2563eb}button:disabled{opacity:.4}
+select,input[type=text],input[type=number]{padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1e293b}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+#T{width:128px;background:#f1f5f9;border-right:1px solid #cbd5e1;padding:8px;display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+#T button{text-align:left;background:#e2e8f0;color:#1e293b}#T button.on{background:#bfdbfe;outline:2px solid #3b82f6}
+#C{flex:1;display:flex;flex-direction:column;min-width:0}
+#wrap{flex:1;overflow:auto;background:#94a3b8;padding:20px}
+#stack{position:relative;display:inline-block;background:repeating-conic-gradient(#d1d5db 0 25%,#fff 0 50%) 0 0/16px 16px;box-shadow:0 0 0 1px #0004}
+#cv{display:block;image-rendering:pixelated}#ov{position:absolute;left:0;top:0;image-rendering:pixelated;cursor:crosshair;touch-action:none}
+#info{background:#f1f5f9;color:#64748b;font-size:12px;padding:4px 10px}
+#R{width:300px;background:#f8fafc;border-left:1px solid #cbd5e1;overflow:auto;padding:6px;flex-shrink:0}
+details{border:1px solid #e2e8f0;border-radius:8px;background:#fff;margin-bottom:6px;padding:4px 8px}summary{cursor:pointer;font-weight:600;padding:3px 0}
+.f{display:flex;align-items:center;gap:6px;margin:4px 0}.f label{flex:1}.f input[type=number]{width:62px}.f input[type=range]{width:120px}.f span{width:32px;text-align:right;color:#64748b}
+.bt{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:4px 0}.bt button{background:#64748b;padding:4px 6px}.bt .full{grid-column:1/3}
+#pal,#rec{display:flex;flex-wrap:wrap;gap:2px;margin:4px 0}.sw{width:18px;height:18px;border:1px solid #0003;cursor:pointer}
+.hint{color:#64748b;font-size:12px}
+.ly{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:6px;cursor:pointer}.ly.on{background:#bfdbfe}.ly span{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.ly button{padding:0 5px;background:#e2e8f0;color:#1e293b}
+#pv{display:block;margin:4px auto;background:repeating-conic-gradient(#e5e7eb 0 25%,#fff 0 50%) 0 0/12px 12px;border:1px solid #cbd5e1;border-radius:6px;image-rendering:pixelated}
+</style>
+</head>
+<body>
+<div id="top"><b>🎨 Édition des Characters</b>
+ <select id="chSel"></select><select id="shSel" title="Feuille à éditer"></select><button class="ok" id="bSave">💾 Enregistrer</button><button class="g" id="bNew">＋ Nouveau</button><button class="g" id="bRel">↺ Recharger</button><button class="g" id="bPng">⬇ PNG</button>
+ <button class="g" id="bUndo" title="Ctrl+Z">↶</button><button class="g" id="bRedo" title="Ctrl+Y">↷</button>
+ <button class="g" id="zOut">−</button><span id="zv">400%</span><button class="g" id="zIn">＋</button><button class="g" id="zFit">Ajuster</button><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="T">
+  <button data-t="pencil" title="Crayon (B)">✏️ Crayon</button><button data-t="erase" title="Gomme (E)">🧽 Gomme</button><button data-t="fill" title="Remplir (G)">🪣 Remplir</button><button data-t="pick" title="Pipette (I)">💉 Pipette</button>
+  <button data-t="line" title="Ligne (L)">╱ Ligne</button><button data-t="rect" title="Rectangle (R)">▭ Rectangle</button><button data-t="ell" title="Ellipse (O)">⬭ Ellipse</button><button data-t="select" title="Sélection / déplacer (M)">⬚ Sélection</button>
+ </aside>
+ <section id="C"><div id="wrap"><div id="stack"><canvas id="cv"></canvas><canvas id="ov"></canvas></div></div><div id="info">Choisis un character dans la liste.</div></section>
+ <aside id="R">
+  <details open><summary>🎨 Couleur et pinceau</summary>
+   <div class="f"><input type="color" id="col" value="#000000"><label>Opacité</label><input type="range" id="alp" min="1" max="100" value="100"></div>
+   <div id="pal"></div><div class="hint">Récentes :</div><div id="rec"></div>
+   <div class="f"><label>Épaisseur <b id="brv">1</b> px</label><input type="range" id="br" min="1" max="16" value="1"></div>
+   <label class="f"><input type="checkbox" id="fil"> Formes pleines</label>
+  </details>
+  <details><summary>✂ Sélection</summary>
+   <div class="bt"><button data-a="cut">✂ Couper</button><button data-a="copy">⧉ Copier</button><button data-a="paste">📋 Coller</button><button data-a="del">🗑 Effacer</button><button data-a="imp">📥 Importer…</button><button data-a="ok" class="ok">✔ Valider</button></div>
+   <input type="file" id="impF" accept="image/*" hidden>
+   <label class="f"><input type="checkbox" id="snap" checked> Aligner sur les frames</label>
+   <div class="hint">Glisse pour sélectionner, glisse dedans pour déplacer. Entrée valide, Échap annule. Ctrl+C/X/V ok.</div>
+  </details>
+  <details><summary>⇄ Retourner</summary>
+   <div class="hint">Sur la sélection, ou sur toute la feuille si rien n'est sélectionné :</div>
+   <div class="bt"><button data-a="fh">⇄ Miroir horizontal</button><button data-a="fv">⇅ Miroir vertical</button><button data-a="rot" class="full">⟳ Rotation 90° (sélection)</button><button data-a="eachH" class="full">⇄ Miroir de chaque frame</button></div>
+   <div class="f"><label>Copier la ligne</label><select id="rFrom"></select><label style="flex:0">vers</label><select id="rTo"></select></div>
+   <button data-a="rowM" style="width:100%" class="g">↔ Copier en miroir (ex : gauche → droite)</button>
+  </details>
+  <details><summary>🌈 Couleurs</summary>
+   <div class="hint">Sur la sélection, ou sur toute la feuille :</div>
+   <div class="f"><label>Teinte</label><input type="range" id="aH" min="-180" max="180" value="0"><span></span></div>
+   <div class="f"><label>Saturation</label><input type="range" id="aS" min="0" max="300" value="100"><span></span></div>
+   <div class="f"><label>Luminosité</label><input type="range" id="aB" min="0" max="200" value="100"><span></span></div>
+   <div class="f"><label>Contraste</label><input type="range" id="aC" min="0" max="200" value="100"><span></span></div>
+   <div class="f"><label>Sépia</label><input type="range" id="aP" min="0" max="100" value="0"><span></span></div>
+   <label class="f"><input type="checkbox" id="aI"> Inverser les couleurs (négatif)</label>
+   <div class="bt"><button class="ok" id="aOk">Appliquer</button><button id="aNo">Réinitialiser</button></div>
+   <b>Remplacer une couleur</b>
+   <div class="f"><input type="color" id="swA" value="#ff0000"><button class="g" id="swPick" title="Prendre la couleur choisie dans la pipette">💉</button><label style="flex:0">→</label><input type="color" id="swB" value="#0000ff"></div>
+   <div class="f"><label>Tolérance</label><input type="range" id="swT" min="0" max="150" value="30"><span></span></div>
+   <button id="swOk" style="width:100%" class="g">Remplacer</button>
+  </details>
+  <details><summary>🧩 Fusion de couches</summary>
+   <div class="hint">Empile des éléments (cheveux, vêtements, accessoires…) pris dans tes autres characters, recolorables, puis fusionne-les dans la feuille.</div>
+   <div class="f"><select id="fSrc" style="flex:1"></select></div>
+   <div class="bt"><button id="fAdd">＋ Ajouter la couche</button><button id="fFile" class="g">📥 Depuis un fichier</button></div>
+   <input type="file" id="fFileI" accept="image/*" hidden>
+   <div id="lays"></div>
+   <div id="lp" hidden>
+    <div class="f"><label>Décalage X</label><input type="number" id="lX"><label style="flex:0">Y</label><input type="number" id="lY"></div>
+    <div class="f"><label>Teinte</label><input type="range" id="lH" min="-180" max="180"><span></span></div>
+    <div class="f"><label>Saturation</label><input type="range" id="lS" min="0" max="300"><span></span></div>
+    <div class="f"><label>Luminosité</label><input type="range" id="lB" min="0" max="200"><span></span></div>
+    <div class="f"><label>Opacité</label><input type="range" id="lO" min="0" max="100"><span></span></div>
+    <label class="f"><input type="checkbox" id="lF"> Miroir horizontal</label><label class="f"><input type="checkbox" id="lU"> Derrière la feuille</label>
+   </div>
+   <button class="ok" id="fMerge" style="width:100%;margin-top:4px">✔ Fusionner dans la feuille</button>
+  </details>
+  <details><summary>📐 Format et taille</summary>
+   <div class="f"><label>Format</label><select id="fmt" style="width:150px"></select></div>
+   <div class="f"><label>Largeur d'une frame</label><input type="number" id="fw" min="4" max="512"></div>
+   <div class="f"><label>Hauteur d'une frame</label><input type="number" id="fh" min="4" max="512"></div>
+   <div class="f"><label>Colonnes</label><input type="number" id="co" min="1" max="64"></div>
+   <div class="f"><label>Lignes</label><input type="number" id="ro" min="1" max="64"></div>
+   <button id="bRes" style="width:100%">Appliquer (agrandit ou coupe l'image)</button>
+   <div class="f" style="margin-top:6px"><label>Mettre à l'échelle ×</label><input type="number" id="scl" value="2" min="0.25" max="8" step="0.25"></div>
+   <button id="bScale" style="width:100%" class="g">Mettre à l'échelle (sans lissage)</button>
+   <div class="hint" id="dims" style="margin-top:4px"></div>
+  </details>
+  <details open><summary>▶ Aperçu de la marche</summary>
+   <canvas id="pv" width="280" height="110"></canvas>
+   <div class="f"><label>Vitesse</label><input type="range" id="pvF" min="1" max="16" value="6"></div>
+  </details>
+  <div class="hint" style="padding:4px">Lignes d'une feuille de marche : bas, gauche, droite, haut.</div>
+ </aside>
+</div>
+<script src="studio-api.js"></script>
+<script src="studio-chars.js"></script>
+<script>
+const $=id=>document.getElementById(id),cv=$("cv"),ov=$("ov");
+const bm=document.createElement("canvas"),bx=bm.getContext("2d",{willReadFrequently:true});
+const ZS=[1,2,3,4,6,8,12,16,24,32],PAL=["#000000","#ffffff","#7f7f7f","#c3c3c3","#880015","#ed1c24","#ff7f27","#fff200","#22b14c","#b5e61d","#00a2e8","#3f48cc","#a349a4","#ffaec9","#b97a57","#efe4b0"];
+let T=null,sid="main",zoom=4,undo=[],redo=[],tool="pencil",sel=null,fl=null,clip=null,drag=null,dirty=false,color="#000000",alpha=100,brush=1,filled=false,snap=true,gPx=true,recent=[],layers=[],selL=-1,adjOn=false,LIST=[];
+const SH=()=>sid==="main"?T:((T.sheets||[]).find(s=>s.id===sid)||T);
+const W=()=>bm.width,H=()=>bm.height,FW=()=>T?SH().fw:32,FH=()=>T?SH().fh:32;
+const msg=t=>{$("msg").hidden=!t;$("msg").textContent=t||""},say=t=>$("st").textContent=t;
+const setDirty=d=>{dirty=d;say(d?"● non enregistré":"")};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mkC=(w,h)=>{const c=document.createElement("canvas");c.width=w;c.height=h;return c};
+function style(){const n=parseInt(color.slice(1),16);return`rgba(${n>>16},${n>>8&255},${n&255},${alpha/100})`}
+const adj=()=>({h:+$("aH").value,s:+$("aS").value,b:+$("aB").value,c:+$("aC").value,p:+$("aP").value,i:$("aI").checked?100:0});
+const fstr=a=>`hue-rotate(${a.h}deg) saturate(${a.s}%) brightness(${a.b}%) contrast(${a.c}%) sepia(${a.p}%) invert(${a.i}%)`;
+const isAdj=a=>a.h||a.s!==100||a.b!==100||a.c!==100||a.p||a.i;
+// ---------- affichage
+function buildLayer(l){const c=mkC(l.src.width,l.src.height),x=c.getContext("2d");x.filter=`hue-rotate(${l.h}deg) saturate(${l.s}%) brightness(${l.b}%)`;if(l.fx){x.translate(c.width,0);x.scale(-1,1)}x.drawImage(l.src,0,0);l.t=c}
+function drawLayers(c,under){layers.forEach(l=>{if(l.vis&&!!l.under===under){c.globalAlpha=l.o/100;c.drawImage(l.t,l.x,l.y)}});c.globalAlpha=1}
+function render(){cv.width=W();cv.height=H();const c=cv.getContext("2d");drawLayers(c,true);c.drawImage(bm,0,0);drawLayers(c,false);
+ const a=adj();if(adjOn&&isAdj(a)){const r=sel||{x:0,y:0,w:W(),h:H()};c.save();c.beginPath();c.rect(r.x,r.y,r.w,r.h);c.clip();c.clearRect(r.x,r.y,r.w,r.h);c.filter=fstr(a);c.drawImage(bm,0,0);c.restore()}
+ const z=zoom,w=W()*z,h=H()*z;cv.style.width=w+"px";cv.style.height=h+"px";ov.width=w;ov.height=h;ov.style.width=w+"px";ov.style.height=h+"px";
+ const o=ov.getContext("2d");o.imageSmoothingEnabled=false;
+ if(fl)o.drawImage(fl.c,fl.x*z,fl.y*z,fl.c.width*z,fl.c.height*z);
+ if(gPx&&z>=8){o.strokeStyle="rgba(0,0,0,.14)";o.lineWidth=1;o.beginPath();for(let x=0;x<=W();x++){o.moveTo(x*z+.5,0);o.lineTo(x*z+.5,h)}for(let y=0;y<=H();y++){o.moveTo(0,y*z+.5);o.lineTo(w,y*z+.5)}o.stroke()}
+ if(T){o.strokeStyle="rgba(0,110,255,.65)";o.lineWidth=1;o.beginPath();for(let x=0;x<=W();x+=FW()){o.moveTo(x*z+.5,0);o.lineTo(x*z+.5,h)}for(let y=0;y<=H();y+=FH()){o.moveTo(0,y*z+.5);o.lineTo(w,y*z+.5)}o.stroke()}
+ const r=fl?{x:fl.x,y:fl.y,w:fl.c.width,h:fl.c.height}:(drag&&drag.mode==="sel"?norm(drag.a,drag.b):sel);
+ if(r){o.lineWidth=2;o.setLineDash([6,4]);o.strokeStyle="#fff";o.strokeRect(r.x*z+1,r.y*z+1,r.w*z-2,r.h*z-2);o.lineDashOffset=5;o.strokeStyle="#000";o.strokeRect(r.x*z+1,r.y*z+1,r.w*z-2,r.h*z-2);o.setLineDash([])}
+ $("zv").textContent=z*100+"%";$("bUndo").disabled=!undo.length&&!fl;$("bRedo").disabled=!redo.length}
+function setZoom(z){z=clamp(z,1,32);while(z>1&&W()*z*H()*z>8e7)z=ZS[Math.max(0,ZS.indexOf(z)-1)]||z-1;zoom=z;render()}
+const stepZoom=d=>{let i=ZS.findIndex(v=>v>=zoom);if(i<0)i=ZS.length-1;setZoom(ZS[clamp(i+d,0,ZS.length-1)])};
+function fit(){const a=$("wrap");let z=1;for(const v of ZS)if(W()*v<=a.clientWidth-40&&H()*v<=a.clientHeight-40)z=v;setZoom(z)}
+$("zIn").onclick=()=>stepZoom(1);$("zOut").onclick=()=>stepZoom(-1);$("zFit").onclick=fit;
+$("wrap").addEventListener("wheel",e=>{if(e.ctrlKey){e.preventDefault();stepZoom(e.deltaY<0?1:-1)}},{passive:false});
+// ---------- historique
+const snapshot=()=>bx.getImageData(0,0,W(),H());
+function restore(d){bm.width=d.width;bm.height=d.height;bx.putImageData(d,0,0)}
+function pushUndo(){undo.push(snapshot());const mx=Math.max(5,Math.floor(1.2e8/(W()*H()*4)));while(undo.length>mx)undo.shift();redo=[];setDirty(true)}
+function doUndo(){if(fl){fl=null;const d=undo.pop();if(d)restore(d);render();return}const d=undo.pop();if(!d)return;redo.push(snapshot());restore(d);sel=null;render();setDirty(true)}
+function doRedo(){const d=redo.pop();if(!d)return;undo.push(snapshot());restore(d);render();setDirty(true)}
+$("bUndo").onclick=doUndo;$("bRedo").onclick=doRedo;
+// ---------- dessin
+const stamp=(x,y)=>{const o=brush>>1;if(tool==="erase")bx.clearRect(x-o,y-o,brush,brush);else{bx.fillStyle=style();bx.fillRect(x-o,y-o,brush,brush)}};
+function line(a,b,f){let x=a.x,y=a.y;const dx=Math.abs(b.x-x),dy=-Math.abs(b.y-y),sx=x<b.x?1:-1,sy=y<b.y?1:-1;let e=dx+dy;for(;;){f(x,y);if(x===b.x&&y===b.y)break;const e2=2*e;if(e2>=dy){e+=dy;x+=sx}if(e2<=dx){e+=dx;y+=sy}}}
+function shape(t,a,b){const f=(x,y)=>{bx.fillStyle=style();const o=brush>>1;bx.fillRect(x-o,y-o,brush,brush)};
+ if(t==="line")return line(a,b,f);
+ const x0=Math.min(a.x,b.x),x1=Math.max(a.x,b.x),y0=Math.min(a.y,b.y),y1=Math.max(a.y,b.y);
+ if(t==="rect"){if(filled){bx.fillStyle=style();bx.fillRect(x0,y0,x1-x0+1,y1-y0+1)}else{line({x:x0,y:y0},{x:x1,y:y0},f);line({x:x1,y:y0},{x:x1,y:y1},f);line({x:x1,y:y1},{x:x0,y:y1},f);line({x:x0,y:y1},{x:x0,y:y0},f)}return}
+ const cx=(x0+x1+1)/2,cy=(y0+y1+1)/2,rx=(x1-x0+1)/2,ry=(y1-y0+1)/2,th=Math.min(1,brush/Math.min(rx,ry)),inn=Math.pow(Math.max(0,1-th),2);bx.fillStyle=style();
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const nx=(x+.5-cx)/rx,ny=(y+.5-cy)/ry,d=nx*nx+ny*ny;if(d<=1&&(filled||d>=inn))bx.fillRect(x,y,1,1)}}
+function fill(p){if(p.x<0||p.y<0||p.x>=W()||p.y>=H())return;const d=bx.getImageData(0,0,W(),H()),a=new Uint32Array(d.data.buffer),n=parseInt(color.slice(1),16),v=((Math.round(alpha*2.55)<<24)|((n&255)<<16)|((n>>8&255)<<8)|(n>>16))>>>0,t=a[p.y*W()+p.x];
+ if(t===v)return;const st=[[p.x,p.y]];while(st.length){const[x,y]=st.pop();if(x<0||y<0||x>=W()||y>=H())continue;const i=y*W()+x;if(a[i]!==t)continue;a[i]=v;st.push([x+1,y],[x-1,y],[x,y+1],[x,y-1])}bx.putImageData(d,0,0)}
+function pick(p){if(p.x<0||p.y<0||p.x>=W()||p.y>=H())return;const d=bx.getImageData(p.x,p.y,1,1).data;if(!d[3])return;setColor("#"+[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,"0")).join(""),Math.round(d[3]/2.55))}
+function setColor(c,a){color=c;if(a)alpha=a;$("col").value=c;$("alp").value=alpha}
+function addRecent(){recent=[color,...recent.filter(c=>c!==color)].slice(0,12);$("rec").innerHTML=recent.map(c=>`<div class="sw" style="background:${c}" data-c="${c}"></div>`).join("")}
+// ---------- sélection / presse-papiers
+function norm(a,b){let x0=Math.min(a.x,b.x),y0=Math.min(a.y,b.y),x1=Math.max(a.x,b.x)+1,y1=Math.max(a.y,b.y)+1;
+ if(snap&&T){const fw=FW(),fh=FH();x0=Math.floor(x0/fw)*fw;y0=Math.floor(y0/fh)*fh;x1=Math.ceil(x1/fw)*fw;y1=Math.ceil(y1/fh)*fh}
+ x0=clamp(x0,0,W());y0=clamp(y0,0,H());x1=clamp(x1,0,W());y1=clamp(y1,0,H());return{x:x0,y:y0,w:Math.max(0,x1-x0),h:Math.max(0,y1-y0)}}
+const inR=(p,r)=>r&&p.x>=r.x&&p.y>=r.y&&p.x<r.x+r.w&&p.y<r.y+r.h;
+function lift(){pushUndo();const c=mkC(sel.w,sel.h);c.getContext("2d").drawImage(bm,sel.x,sel.y,sel.w,sel.h,0,0,sel.w,sel.h);bx.clearRect(sel.x,sel.y,sel.w,sel.h);fl={c,x:sel.x,y:sel.y}}
+function commit(){if(!fl)return;bx.drawImage(fl.c,fl.x,fl.y);sel={x:fl.x,y:fl.y,w:fl.c.width,h:fl.c.height};fl=null;render()}
+function selDown(p){const r=fl?{x:fl.x,y:fl.y,w:fl.c.width,h:fl.c.height}:sel;
+ if(inR(p,r)){if(!fl)lift();drag={mode:"move",o:p,fx:fl.x,fy:fl.y}}else{commit();sel=null;drag={mode:"sel",a:p,b:p}}render()}
+function doCopy(){let c;if(fl){c=mkC(fl.c.width,fl.c.height);c.getContext("2d").drawImage(fl.c,0,0)}else if(sel&&sel.w){c=mkC(sel.w,sel.h);c.getContext("2d").drawImage(bm,sel.x,sel.y,sel.w,sel.h,0,0,sel.w,sel.h)}else return false;clip={c};say("Copié");try{c.toBlob(b=>b&&navigator.clipboard&&navigator.clipboard.write([new ClipboardItem({"image/png":b})]).catch(()=>{}))}catch(x){}return true}
+function doDel(){if(fl){fl=null;render()}else if(sel&&sel.w){pushUndo();bx.clearRect(sel.x,sel.y,sel.w,sel.h);render()}}
+function doPaste(src){commit();pushUndo();const c=mkC(src.width,src.height);c.getContext("2d").drawImage(src,0,0);let x=sel?sel.x:0,y=sel?sel.y:0;
+ if(snap){x=Math.round(x/FW())*FW();y=Math.round(y/FH())*FH()}fl={c,x:clamp(x,0,Math.max(0,W()-c.width)),y:clamp(y,0,Math.max(0,H()-c.height))};setTool("select");render()}
+function tf(k){if(!fl){if(!sel||!sel.w){say("Sélectionne d'abord une zone");return}lift()}const c=fl.c,w=c.width,h=c.height,n=k==="rot"?mkC(h,w):mkC(w,h),x=n.getContext("2d");
+ if(k==="fh"){x.translate(w,0);x.scale(-1,1)}else if(k==="fv"){x.translate(0,h);x.scale(1,-1)}else{x.translate(h,0);x.rotate(Math.PI/2)}x.drawImage(c,0,0);fl.c=n;render()}
+function flipAll(k){commit();pushUndo();const t=mkC(W(),H());t.getContext("2d").drawImage(bm,0,0);bx.clearRect(0,0,W(),H());bx.save();if(k==="fh"){bx.translate(W(),0);bx.scale(-1,1)}else{bx.translate(0,H());bx.scale(1,-1)}bx.drawImage(t,0,0);bx.restore();render()}
+function eachFrame(){commit();pushUndo();const t=mkC(W(),H()),fw=FW(),fh=FH();t.getContext("2d").drawImage(bm,0,0);bx.clearRect(0,0,W(),H());
+ for(let r=0;r<Math.floor(H()/fh);r++)for(let c=0;c<Math.floor(W()/fw);c++){bx.save();bx.translate(c*fw+fw,r*fh);bx.scale(-1,1);bx.drawImage(t,c*fw,r*fh,fw,fh,0,0,fw,fh);bx.restore()}render()}
+function rowMirror(){const a=+$("rFrom").value,b=+$("rTo").value,fw=FW(),fh=FH();if(a===b){say("Choisis deux lignes différentes");return}commit();pushUndo();
+ const cols=Math.floor(W()/fw),t=mkC(W(),fh);t.getContext("2d").drawImage(bm,0,a*fh,W(),fh,0,0,W(),fh);bx.clearRect(0,b*fh,W(),fh);
+ for(let c=0;c<cols;c++){bx.save();bx.translate(c*fw+fw,b*fh);bx.scale(-1,1);bx.drawImage(t,c*fw,0,fw,fh,0,0,fw,fh);bx.restore()}render()}
+document.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{const a=b.dataset.a;
+ if(a==="cut"){if(doCopy())doDel()}else if(a==="copy")doCopy();else if(a==="paste"){if(clip)doPaste(clip.c);else say("Rien à coller")}
+ else if(a==="del")doDel();else if(a==="imp")$("impF").click();else if(a==="ok")commit();
+ else if(a==="fh"||a==="fv"){(sel||fl)?tf(a):flipAll(a)}else if(a==="rot")tf("rot");else if(a==="eachH")eachFrame();else if(a==="rowM")rowMirror()});
+$("impF").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(f&&T)doPaste(await createImageBitmap(f))};
+document.addEventListener("paste",async e=>{if(!T||/INPUT|SELECT/.test(e.target.tagName))return;const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));
+ if(it){e.preventDefault();doPaste(await createImageBitmap(it.getAsFile()))}else if(clip){e.preventDefault();doPaste(clip.c)}});
+// ---------- couleurs : appliquer / remplacer
+function adjApply(a){commit();const r=sel||{x:0,y:0,w:W(),h:H()};pushUndo();const t=mkC(r.w,r.h);t.getContext("2d").drawImage(bm,r.x,r.y,r.w,r.h,0,0,r.w,r.h);bx.clearRect(r.x,r.y,r.w,r.h);bx.save();bx.filter=fstr(a);bx.drawImage(t,r.x,r.y);bx.restore();adjOn=false;resetAdj();render()}
+function resetAdj(){[["aH",0],["aS",100],["aB",100],["aC",100],["aP",0]].forEach(([i,v])=>$(i).value=v);$("aI").checked=false;adjSpans()}
+function adjSpans(){["aH","aS","aB","aC","aP"].forEach(i=>$(i).nextElementSibling.textContent=$(i).value)}
+["aH","aS","aB","aC","aP","aI"].forEach(i=>$(i).oninput=()=>{adjOn=true;adjSpans();render()});
+$("aOk").onclick=()=>{const a=adj();if(isAdj(a))adjApply(a)};$("aNo").onclick=()=>{adjOn=false;resetAdj();render()};
+$("swPick").onclick=()=>$("swA").value=color;$("swT").oninput=e=>e.target.nextElementSibling.textContent=e.target.value;
+$("swOk").onclick=()=>{commit();const r=sel||{x:0,y:0,w:W(),h:H()},A=parseInt($("swA").value.slice(1),16),B=parseInt($("swB").value.slice(1),16),tol=+$("swT").value,
+ ar=A>>16,ag=A>>8&255,ab=A&255,br=B>>16,bg=B>>8&255,bb=B&255;pushUndo();const d=bx.getImageData(r.x,r.y,r.w,r.h),p=d.data;let n=0;
+ for(let i=0;i<p.length;i+=4){if(!p[i+3])continue;const dr=p[i]-ar,dg=p[i+1]-ag,db=p[i+2]-ab;if(Math.sqrt(dr*dr+dg*dg+db*db)<=tol){p[i]=br;p[i+1]=bg;p[i+2]=bb;n++}}
+ bx.putImageData(d,r.x,r.y);render();say(n+" pixel(s) remplacé(s)")};
+// ---------- fusion de couches
+async function fillSrc(){const l=await Chars.col().getAll().catch(()=>[]),o=[];(l||[]).forEach(c=>{if(!c)return;o.push(`<option value="${c.id}|main">${c.name} — feuille principale</option>`);(c.sheets||[]).forEach(s=>o.push(`<option value="${c.id}|${s.id}">${c.name} — ${s.name}</option>`))});$("fSrc").innerHTML=o.length?o.join(""):'<option value="">— aucun autre character —</option>'}
+function addLayer(src,name){layers.push({name,src,x:0,y:0,h:0,s:100,b:100,o:100,fx:false,under:false,vis:true});selL=layers.length-1;buildLayer(layers[selL]);layersUI();render()}
+$("fAdd").onclick=async()=>{const v=$("fSrc").value;if(!v||!T)return;const[id,s]=v.split("|");try{const c=await Chars.col().get(id),sh=s==="main"?c:c.sheets.find(x=>x.id===s);addLayer(await Chars.loadImg(Chars.assets().url(sh.image)),$("fSrc").selectedOptions[0].textContent)}catch(e){say("⚠ "+e.message)}};
+$("fFile").onclick=()=>$("fFileI").click();$("fFileI").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f||!T)return;const b=await createImageBitmap(f),c=mkC(b.width,b.height);c.getContext("2d").drawImage(b,0,0);addLayer(c,f.name)};
+function layersUI(){$("lays").innerHTML=layers.map((l,i)=>`<div class="ly${i===selL?" on":""}" data-i="${i}"><input type="checkbox" data-a="v" ${l.vis?"checked":""}><span>${l.name}</span><button data-a="u">▲</button><button data-a="d">▼</button><button data-a="x">✖</button></div>`).join("");
+ $("lp").hidden=selL<0||!layers[selL];const l=layers[selL];if(l){$("lX").value=l.x;$("lY").value=l.y;$("lH").value=l.h;$("lS").value=l.s;$("lB").value=l.b;$("lO").value=l.o;$("lF").checked=l.fx;$("lU").checked=l.under;["lH","lS","lB","lO"].forEach(i=>$(i).nextElementSibling.textContent=$(i).value)}}
+$("lays").onclick=e=>{const el=e.target.closest(".ly");if(!el)return;const i=+el.dataset.i,a=e.target.dataset.a;
+ if(a==="v"){layers[i].vis=e.target.checked}else if(a==="x"){layers.splice(i,1);selL=Math.min(selL,layers.length-1)}
+ else if(a==="u"&&i<layers.length-1){[layers[i],layers[i+1]]=[layers[i+1],layers[i]];selL=i+1}else if(a==="d"&&i>0){[layers[i],layers[i-1]]=[layers[i-1],layers[i]];selL=i-1}else selL=i;layersUI();render()};
+const lp=(id,k,f)=>$(id).oninput=e=>{const l=layers[selL];if(!l)return;l[k]=f(e.target);if(["h","s","b","fx"].includes(k))buildLayer(l);$(id).nextElementSibling&&$(id).nextElementSibling.tagName==="SPAN"&&($(id).nextElementSibling.textContent=l[k]);render()};
+lp("lX","x",e=>parseInt(e.value)||0);lp("lY","y",e=>parseInt(e.value)||0);lp("lH","h",e=>+e.value);lp("lS","s",e=>+e.value);lp("lB","b",e=>+e.value);lp("lO","o",e=>+e.value);lp("lF","fx",e=>e.checked);lp("lU","under",e=>e.checked);
+$("fMerge").onclick=()=>{if(!layers.length){say("Aucune couche à fusionner");return}commit();pushUndo();const t=mkC(W(),H()),c=t.getContext("2d");drawLayers(c,true);c.drawImage(bm,0,0);drawLayers(c,false);bx.clearRect(0,0,W(),H());bx.drawImage(t,0,0);layers=[];selL=-1;layersUI();render();say("Couches fusionnées")};
+// ---------- souris
+const pos=e=>{const r=ov.getBoundingClientRect();return{x:Math.floor((e.clientX-r.left)/zoom),y:Math.floor((e.clientY-r.top)/zoom)}};
+ov.onpointerdown=e=>{if(!T||e.button)return;ov.setPointerCapture(e.pointerId);const p=pos(e);
+ if(tool==="pick"){pick(p);return}if(tool==="select"){selDown(p);return}
+ commit();pushUndo();if(tool==="fill"){fill(p);addRecent();render();return}
+ drag={mode:tool,a:p,b:p,last:p};if(tool==="pencil"||tool==="erase")stamp(p.x,p.y);else drag.base=snapshot();render()};
+ov.onpointermove=e=>{if(!T)return;const p=pos(e);
+ if(p.x>=0&&p.y>=0&&p.x<W()&&p.y<H()){const d=bx.getImageData(p.x,p.y,1,1).data,fw=FW(),fh=FH();$("info").textContent=`x ${p.x}  y ${p.y}  —  frame col. ${Math.floor(p.x/fw)+1}, ligne ${Math.floor(p.y/fh)+1} (${Chars.DIRS[Math.floor(p.y/fh)]||"—"})  —  ${d[3]?"rgba("+d.join(",")+")":"transparent"}`}
+ if(!drag)return;const m=drag.mode;
+ if(m==="sel")drag.b=p;else if(m==="move"){let x=drag.fx+p.x-drag.o.x,y=drag.fy+p.y-drag.o.y;if(snap){x=Math.round(x/FW())*FW();y=Math.round(y/FH())*FH()}fl.x=x;fl.y=y}
+ else if(m==="pencil"||m==="erase"){line(drag.last,p,stamp);drag.last=p}
+ else{drag.b=p;bx.putImageData(drag.base,0,0);shape(m,drag.a,p)}render()};
+ov.onpointerup=()=>{if(!drag)return;const m=drag.mode;
+ if(m==="sel"){const r=norm(drag.a,drag.b);sel=(r.w&&(snap||r.w>1||r.h>1))?r:null}else if(m!=="move")addRecent();drag=null;render()};
+// ---------- outils / panneau
+function setTool(t){tool=t;document.querySelectorAll("#T [data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===t))}
+document.querySelectorAll("#T [data-t]").forEach(b=>b.onclick=()=>{if(b.dataset.t!=="select")commit();setTool(b.dataset.t)});
+$("pal").innerHTML=PAL.map(c=>`<div class="sw" style="background:${c}" data-c="${c}"></div>`).join("");
+document.addEventListener("click",e=>{const c=e.target.dataset&&e.target.dataset.c;if(c&&e.target.classList.contains("sw"))setColor(c)});
+$("col").oninput=e=>color=e.target.value;$("alp").oninput=e=>alpha=+e.target.value;
+$("br").oninput=e=>{brush=+e.target.value;$("brv").textContent=brush};
+$("fil").onchange=e=>filled=e.target.checked;$("snap").onchange=e=>snap=e.target.checked;
+document.addEventListener("keydown",e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
+ if(e.ctrlKey){if(k==="z"){e.preventDefault();e.shiftKey?doRedo():doUndo()}else if(k==="y"){e.preventDefault();doRedo()}else if(k==="s"){e.preventDefault();saveAll()}
+  else if(k==="c"){if(doCopy())e.preventDefault()}else if(k==="x"){if(doCopy()){doDel();e.preventDefault()}}else if(k==="a"&&T){e.preventDefault();setTool("select");commit();sel={x:0,y:0,w:W(),h:H()};render()}return}
+ if(k==="enter")commit();else if(k==="escape"){if(fl)doUndo();else{sel=null;render()}}else if(k==="delete"||k==="backspace")doDel();
+ else if(k==="+"||k==="=")stepZoom(1);else if(k==="-")stepZoom(-1);
+ else{const m={b:"pencil",e:"erase",g:"fill",i:"pick",l:"line",r:"rect",o:"ell",m:"select"}[k];if(m){if(m!=="select")commit();setTool(m)}}});
+// ---------- format / taille de la feuille
+function syncFormat(){if(!T)return;const s=SH();$("fmt").value=s.format||"libre";$("fw").value=s.fw;$("fh").value=s.fh;$("co").value=s.cols;$("ro").value=s.rows;
+ $("dims").textContent=`Image ${W()}×${H()} px — ${s.cols}×${s.rows} frames de ${s.fw}×${s.fh} px`+((s.cols*s.fw!==W()||s.rows*s.fh!==H())?" — ⚠ le découpage ne correspond pas à l'image (utilise « Appliquer »)":"");
+ const o=Array.from({length:s.rows},(_,i)=>`<option value="${i}">${i+1}${Chars.DIRS[i]?" · "+Chars.DIRS[i]:""}</option>`).join("");const a=$("rFrom").value,b=$("rTo").value;$("rFrom").innerHTML=o;$("rTo").innerHTML=o;
+ $("rFrom").value=a||"1";$("rTo").value=b||"2";if(!$("rFrom").value)$("rFrom").value="0";if(!$("rTo").value)$("rTo").value="0"}
+$("fmt").innerHTML=Object.keys(Chars.PRESETS).map(k=>`<option value="${k}">${Chars.PRESETS[k].label.split(" — ")[0]}</option>`).join("");
+$("fmt").onchange=e=>{const p=Chars.PRESETS[e.target.value];$("fw").value=p.fw;$("fh").value=p.fh;$("co").value=p.cols;$("ro").value=p.rows};
+$("bRes").onclick=()=>{if(!T)return;commit();const s=SH(),fw=clamp(+$("fw").value||32,4,512),fh=clamp(+$("fh").value||32,4,512),co=clamp(+$("co").value||1,1,64),ro=clamp(+$("ro").value||1,1,64),nw=co*fw,nh=ro*fh;
+ if(nw>4096||nh>4096){alert("Image trop grande (maximum 4096 px de côté).");return}
+ pushUndo();const t=mkC(W(),H());t.getContext("2d").drawImage(bm,0,0);bm.width=nw;bm.height=nh;bx.drawImage(t,0,0);Object.assign(s,{format:$("fmt").value,fw,fh,cols:co,rows:ro});sel=null;syncFormat();render()};
+$("bScale").onclick=()=>{if(!T)return;commit();const f=+$("scl").value||1,s=SH();if(f===1)return;if(Math.max(W(),H())*f>4096){alert("Image trop grande après mise à l'échelle (maximum 4096 px).");return}
+ if(!confirm(`Mettre toute la feuille à l'échelle ×${f} (sans lissage) ?`))return;pushUndo();const t=mkC(W(),H());t.getContext("2d").drawImage(bm,0,0);bm.width=Math.round(W()*f);bm.height=Math.round(H()*f);bx.imageSmoothingEnabled=false;bx.drawImage(t,0,0,bm.width,bm.height);
+ s.fw=Math.round(s.fw*f);s.fh=Math.round(s.fh*f);s.format="libre";sel=null;syncFormat();fit()};
+// ---------- aperçu de la marche
+let pt=0,pi=0,last=0;
+function seq(){const s=SH();return Chars.walk(s.format,s.cols)}
+function tick(ts){const dt=Math.min(.1,(ts-last)/1000||0);last=ts;const p=$("pv"),x=p.getContext("2d");
+ if(T){const s=SH(),sq=seq(),rows=Math.min(4,s.rows),k=Math.max(1,Math.min(3,Math.floor(272/(rows*s.fw)),Math.floor(104/s.fh)));
+  pt+=dt;if(pt>=1/(+$("pvF").value||6)){pt=0;pi++}
+  p.width=Math.max(rows*s.fw*k,40);p.height=Math.max(s.fh*k,40);x.imageSmoothingEnabled=false;x.clearRect(0,0,p.width,p.height);
+  for(let r=0;r<rows;r++)x.drawImage(cv,sq[pi%sq.length]*s.fw,r*s.fh,s.fw,s.fh,r*s.fw*k,0,s.fw*k,s.fh*k)}
+ requestAnimationFrame(tick)}
+// ---------- characters : liste, chargement, enregistrement
+async function list(id){LIST=await Chars.col().list();$("chSel").innerHTML='<option value="">— choisir un character —</option>'+LIST.map(x=>`<option value="${x.id}">${x.name||x.id}</option>`).join("");$("chSel").value=id||"";return LIST}
+function shList(){const l=[{id:"main",name:"Feuille principale"},...(T.sheets||[])];$("shSel").innerHTML=l.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");$("shSel").value=sid}
+async function loadSheet(){const s=SH(),im=await Chars.loadImg(Chars.assets().url(s.image));bm.width=im.width;bm.height=im.height;bx.clearRect(0,0,W(),H());bx.drawImage(im,0,0);undo=[];redo=[];sel=null;fl=null;drag=null;layers=[];selL=-1;adjOn=false;resetAdj();layersUI();setDirty(false);syncFormat();fit()}
+async function load(id){if(dirty&&!confirm("Des modifications ne sont pas enregistrées. Les abandonner ?")){$("chSel").value=T?T.id:"";return}
+ if(!id){T=null;return}
+ try{const t=await Chars.col().get(id);t.id=id;t.sheets=t.sheets||[];t.anims=t.anims||[];t.format=t.format||"libre";T=t;sid="main";msg("");shList();await loadSheet();localStorage.setItem("jv_lastchar_"+Studio.project,id);await list(id);fillSrc()}catch(e){msg(e.message)}}
+$("chSel").onchange=e=>load(e.target.value);
+$("shSel").onchange=async e=>{if(dirty&&!confirm("Des modifications ne sont pas enregistrées. Les abandonner ?")){$("shSel").value=sid;return}sid=e.target.value;try{await loadSheet()}catch(x){msg(x.message)}};
+$("bRel").onclick=()=>{if(T){const i=T.id;dirty=false;load(i)}};
+async function saveAll(){if(!T)return;commit();say("Enregistrement…");
+ try{const blob=await new Promise(r=>bm.toBlob(r,"image/png")),s=SH(),stem=(s.image||"character").replace(/\.[^.]+$/,""),a=Chars.assets();
+  const all=await Chars.col().getAll(),shared=all.some(x=>x&&x.id!==T.id&&(x.image===s.image||(x.sheets||[]).some(z=>z.image===s.image)))||(sid==="main"?(T.sheets||[]).some(z=>z.image===s.image):T.image===s.image);let name;
+  if(shared){name=stem+"-"+(Date.now()%100000)+".png";const up=await a.upload(blob,name);name=up.name}
+  else{const tmp=stem+"__tmp.png";await a.remove(tmp).catch(()=>{});await a.upload(blob,tmp);name=stem+".png";if(s.image)await a.remove(s.image).catch(()=>{});if(name!==s.image)await a.remove(name).catch(()=>{});try{await a.rename(tmp,name)}catch(x){name=tmp}}
+  s.image=name;await Chars.col().save(T.id,T);setDirty(false);say("✔ enregistré"+(shared?" (nouvelle image : le fichier était partagé)":""))}catch(e){say("⚠ "+e.message)}}
+$("bSave").onclick=saveAll;
+$("bPng").onclick=()=>{if(!T)return;commit();bm.toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=(T.name||"character")+".png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)})};
+$("bNew").onclick=async()=>{if(dirty&&!confirm("Des modifications ne sont pas enregistrées. Les abandonner ?"))return;const v=await Chars.dialog({title:"Nouveau character",file:"optional"});if(!v)return;try{const id=await Chars.create(v);dirty=false;await load(id)}catch(e){alert(e.message)}};
+window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");try{await Studio.ensureProject();const l=await list();
+  if(l.length)await load((l.find(x=>x.id===localStorage.getItem("jv_lastchar_"+Studio.project))||l[0]).id);else{T=null;$("info").textContent="Aucun character : crée-en un avec « ＋ Nouveau »."}}catch(e){msg(e.message)}}
+Studio.onProject(()=>{dirty=false;T=null;init()});
+setTool("pencil");addRecent();adjSpans();init();requestAnimationFrame(tick);
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des images</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top,#tools{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+#tools{background:#334155;font-size:12px}
+button,select,input{font:inherit}
+button{background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}button.ok{background:#16a34a}button:disabled{opacity:.4}
+select,input[type=text],input[type=number],input[type=search]{padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1e293b}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+#grid{flex:1;overflow:auto;padding:12px;display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;position:relative}
+#grid.drop{outline:3px dashed #3b82f6;outline-offset:-8px;background:#dbeafe}
+.cd{background:#fff;border:2px solid transparent;border-radius:10px;padding:6px;cursor:pointer;position:relative;box-shadow:0 1px 3px #0002}.cd:hover{border-color:#93c5fd}.cd.on{border-color:#3b82f6;background:#eff6ff}
+.th{display:flex;align-items:center;justify-content:center;background:repeating-conic-gradient(#e5e7eb 0 25%,#fff 0 50%) 0 0/12px 12px;border-radius:6px;overflow:hidden}.th img{max-width:100%;max-height:100%;image-rendering:auto}
+.nm{margin-top:4px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.mt{color:#64748b;font-size:11px}
+.bd{position:absolute;top:4px;right:4px;background:#16a34a;color:#fff;border-radius:10px;padding:0 7px;font-size:11px}
+#R{width:330px;background:#f8fafc;border-left:1px solid #cbd5e1;overflow:auto;padding:10px;flex-shrink:0}
+#pv{display:flex;align-items:center;justify-content:center;height:200px;background:repeating-conic-gradient(#e5e7eb 0 25%,#fff 0 50%) 0 0/14px 14px;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden}#pv img{max-width:100%;max-height:100%}
+.f{display:flex;align-items:center;gap:6px;margin:6px 0}.f label{width:80px;color:#475569}.f input[type=text]{flex:1}
+.bt{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:8px 0}.bt .full{grid-column:1/3}
+h4{margin:12px 0 6px;font-size:13px}.hint{color:#64748b;font-size:12px}ul.us{margin-left:16px}ul.us li{margin:3px 0;color:#334155;font-size:12px}
+/* retouche */
+#rt{position:fixed;inset:0;background:#0b1220;z-index:50;display:flex;flex-direction:column}
+#rt .bar{display:flex;gap:6px;align-items:center;padding:6px 10px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+#rt .main{flex:1;display:flex;min-height:0}#rt .stage{flex:1;overflow:auto;padding:16px;background:#2b3547}
+#rt .stack{position:relative;display:inline-block;background:repeating-conic-gradient(#d1d5db 0 25%,#fff 0 50%) 0 0/14px 14px}#rt canvas{display:block}#rt #sl{position:absolute;left:0;top:0;cursor:crosshair;touch-action:none}
+#rt .side{width:300px;background:#f8fafc;overflow:auto;padding:8px}
+#rt details{border:1px solid #e2e8f0;border-radius:8px;background:#fff;margin-bottom:6px;padding:4px 8px}#rt summary{cursor:pointer;font-weight:600;padding:3px 0}
+#rt .pr{display:flex;align-items:center;gap:6px;margin:3px 0}#rt .pr label{width:100px;color:#334155;font-size:12px}#rt .pr input[type=range]{flex:1}#rt .pr span{width:34px;text-align:right;color:#64748b;font-size:12px}
+</style>
+</head>
+<body>
+<div id="top"><b>🖼️ Gestion des images</b><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="tools"><button id="bImp">📥 Importer des images</button><input type="file" id="fImp" accept="image/*" multiple hidden>
+ <input type="search" id="q" placeholder="Rechercher…" style="width:180px"><select id="cat"><option value="">Toutes les catégories</option></select>
+ <label>Taille</label><input type="range" id="zs" min="70" max="240" value="130" style="width:110px"><button class="g" id="bU">↻ Utilisations</button><span class="hint" style="color:#cbd5e1">Astuce : glisse des images ici pour les importer.</span></div>
+<div id="cols"><div id="grid"></div>
+ <aside id="R"><div class="hint">Choisis une image pour voir ses détails, la renommer, la retoucher ou la supprimer.</div></aside></div>
+<datalist id="cats"></datalist>
+<script src="studio-api.js"></script>
+<script src="studio-chars.js"></script>
+<script src="studio-events.js"></script>
+<script>
+const $=id=>document.getElementById(id),AS=()=>Studio.assets("images");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const kb=n=>n<1024?n+" o":n<1048576?(n/1024).toFixed(0)+" Ko":(n/1048576).toFixed(1)+" Mo";
+const OK=/\.(png|jpe?g|gif|webp|bmp|svg|avif)$/i;
+let LIST=[],META={},U={},sel=null,dims={};
+const msg=x=>{$("msg").hidden=!x;$("msg").textContent=x||""};
+const auto=Studio.autosave(async()=>{try{await Studio.saveDoc("images-meta",META);$("st").textContent="✔ enregistré"}catch(e){$("st").textContent="⚠ "+e.message}},600);
+const touch=()=>{$("st").textContent="● modifié";auto()};
+const meta=n=>META[n]||(META[n]={cat:"",note:""});
+// ---------- grille
+function cats(){const c=[...new Set(Object.values(META).map(m=>m.cat).filter(Boolean))].sort(),cur=$("cat").value;
+ $("cat").innerHTML='<option value="">Toutes les catégories</option>'+c.map(x=>`<option ${x===cur?"selected":""}>${esc(x)}</option>`).join("");$("cats").innerHTML=c.map(x=>`<option value="${esc(x)}">`).join("")}
+function grid(){const q=$("q").value.toLowerCase().trim(),c=$("cat").value,z=+$("zs").value;
+ const l=LIST.filter(i=>(!c||meta(i.name).cat===c)&&(!q||(i.name+" "+meta(i.name).cat+" "+meta(i.name).note).toLowerCase().includes(q)));
+ $("grid").innerHTML=l.map(i=>{const n=(U["img:"+i.name]||[]).length,d=dims[i.name];
+  return`<div class="cd${sel===i.name?" on":""}" data-n="${esc(i.name)}" style="width:${z+14}px"><div class="th" style="height:${z}px"><img src="${i.url}?v=${Math.floor(i.modified*1000)}" loading="lazy"></div><div class="nm" title="${esc(i.name)}">${esc(i.name)}</div><div class="mt">${d?d[0]+"×"+d[1]+" · ":""}${kb(i.size)}</div>${n?`<span class="bd">${n}×</span>`:""}</div>`}).join("")||'<div class="hint" style="padding:20px">Aucune image. Clique sur « Importer des images » ou glisse-en ici.</div>'}
+$("grid").addEventListener("load",e=>{if(e.target.tagName!=="IMG")return;const n=e.target.closest(".cd").dataset.n;dims[n]=[e.target.naturalWidth,e.target.naturalHeight];const m=e.target.closest(".cd").querySelector(".mt"),it=LIST.find(i=>i.name===n);if(m&&it)m.textContent=dims[n][0]+"×"+dims[n][1]+" · "+kb(it.size);if(sel===n)panel()},true);
+$("grid").onclick=e=>{const c=e.target.closest(".cd");if(c){sel=c.dataset.n;grid();panel()}};
+["q","cat","zs"].forEach(i=>$(i).oninput=grid);
+// ---------- panneau de droite
+function panel(){const it=LIST.find(i=>i.name===sel);if(!it){$("R").innerHTML='<div class="hint">Choisis une image pour voir ses détails, la renommer, la retoucher ou la supprimer.</div>';return}
+ const m=meta(sel),d=dims[sel],us=U["img:"+sel]||[];
+ $("R").innerHTML=`<div id="pv"><img src="${it.url}?v=${Math.floor(it.modified*1000)}"></div>
+ <div class="hint" style="margin:4px 0">${d?d[0]+" × "+d[1]+" px · ":""}${kb(it.size)}</div>
+ <div class="f"><label>Nom</label><input type="text" id="pn" value="${esc(it.name)}"></div>
+ <div class="f"><label>Catégorie</label><input type="text" id="pc" list="cats" value="${esc(m.cat)}" placeholder="Ex : Décors, Nuages…"></div>
+ <div class="f"><label>Note</label><input type="text" id="pt" value="${esc(m.note)}"></div>
+ <div class="bt"><button id="bRt" class="full ok">✂ Retoucher cette image…</button><button class="g" id="bDup">⧉ Dupliquer</button><button class="g" id="bRep">🔁 Remplacer le fichier</button><button class="g" id="bDl">⬇ Télécharger</button><button class="r" id="bDel">🗑 Supprimer</button></div>
+ <h4>Utilisée dans</h4>${us.length?`<ul class="us">${us.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:'<div class="hint">Pas encore utilisée.</div>'}`;
+ $("pc").oninput=e=>{meta(sel).cat=e.target.value;touch()};$("pc").onchange=()=>cats();$("pt").oninput=e=>{meta(sel).note=e.target.value;touch()};
+ $("pn").onchange=rename;$("bRt").onclick=()=>retouch(sel);$("bDup").onclick=dup;$("bDel").onclick=del;
+ $("bDl").onclick=()=>{const a=document.createElement("a");a.href=it.url;a.download=it.name;a.click()};
+ $("bRep").onclick=()=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.onchange=async()=>{const f=i.files[0];if(!f)return;try{const ext=(sel.match(/\.[^.]+$/)||[""])[0];if(!f.name.toLowerCase().endsWith(ext.toLowerCase())&&!confirm("Le nouveau fichier n'a pas la même extension : le nom de l'image va changer (les events seront mis à jour). Continuer ?"))return;await replaceFile(sel,f)}catch(e){alert(e.message)}};i.click()}}
+async function replaceFile(name,blobOrFile,newExt){const stem=name.replace(/\.[^.]+$/,""),oldExt=(name.match(/\.[^.]+$/)||[".png"])[0],ext=newExt?"."+newExt:(blobOrFile.name?(blobOrFile.name.match(/\.[^.]+$/)||[oldExt])[0]:oldExt),tmp=stem+"__tmp"+ext;
+ let fin=stem+ext;await AS().remove(tmp).catch(()=>{});await AS().upload(blobOrFile,tmp);await AS().remove(name).catch(()=>{});if(fin!==name)await AS().remove(fin).catch(()=>{});try{await AS().rename(tmp,fin)}catch(e){fin=tmp}
+ if(fin!==name){await Events.renameImage(name,fin);META[fin]=META[name]||{cat:"",note:""};delete META[name];touch();sel=fin}delete dims[name];await refresh();return fin}
+async function rename(){const n=$("pn").value.trim(),old=sel;if(!n||n===old)return;if(!OK.test(n)){alert("Le nom doit garder une extension d'image (.png, .jpg, .gif, .webp…).");$("pn").value=old;return}
+ try{await AS().rename(old,n);const c=await Events.renameImage(old,n);META[n]=META[old]||{cat:"",note:""};delete META[old];dims[n]=dims[old];delete dims[old];touch();sel=n;await refresh();if(c)$("st").textContent=`✔ renommée (${c} référence(s) mise(s) à jour dans les events)`}catch(e){alert(e.message);$("pn").value=old}}
+async function dup(){try{const b=await (await fetch(LIST.find(i=>i.name===sel).url)).blob(),stem=sel.replace(/\.[^.]+$/,""),ext=(sel.match(/\.[^.]+$/)||[".png"])[0],up=await AS().upload(b,stem+"-copie"+ext);META[up.name]={...meta(sel)};touch();sel=up.name;await refresh()}catch(e){alert(e.message)}}
+async function del(){const n=(U["img:"+sel]||[]).length;if(!confirm(`Supprimer l'image « ${sel} » ?`+(n?`\n\n⚠ Elle est utilisée ${n} fois : ces events n'afficheront plus rien.`:"")))return;
+ try{await AS().remove(sel);delete META[sel];touch();sel=null;await refresh()}catch(e){alert(e.message)}}
+// ---------- import (bouton + glisser-déposer)
+async function importFiles(files){const l=[...files].filter(f=>OK.test(f.name)||f.type.startsWith("image/"));if(!l.length){$("st").textContent="Aucune image dans la sélection.";return}
+ let n=0,last;for(const f of l){try{$("st").textContent=`Import ${++n}/${l.length}…`;const up=await AS().upload(f);last=up.name}catch(e){alert(f.name+" : "+e.message)}}
+ sel=last||sel;await refresh();$("st").textContent=`✔ ${n} image(s) importée(s)`}
+$("bImp").onclick=()=>$("fImp").click();$("fImp").onchange=e=>{importFiles(e.target.files);e.target.value=""};
+["dragenter","dragover"].forEach(ev=>document.addEventListener(ev,e=>{if([...(e.dataTransfer?.types||[])].includes("Files")){e.preventDefault();$("grid").classList.add("drop")}}));
+["dragleave","drop"].forEach(ev=>document.addEventListener(ev,e=>{if(ev==="drop"||e.target===document.documentElement||!e.relatedTarget)$("grid").classList.remove("drop")}));
+document.addEventListener("drop",e=>{if(e.dataTransfer&&e.dataTransfer.files.length){e.preventDefault();importFiles(e.dataTransfer.files)}});
+document.addEventListener("paste",e=>{const f=[...(e.clipboardData?.files||[])];if(f.length&&!/INPUT/.test(e.target.tagName)){e.preventDefault();importFiles(f.map((x,i)=>x.name&&x.name!=="image.png"?x:new File([x],"capture-"+Date.now()+"-"+i+".png",{type:x.type})))}});
+// ---------- retouche
+const mk=(w,h)=>{const c=document.createElement("canvas");c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
+async function retouch(name){const im=await Chars.loadImg(AS().url(name)+"?t="+Date.now());let Wc=mk(im.width,im.height);Wc.getContext("2d").drawImage(im,0,0);
+ let hist=[],redo=[],crop=null,drag=null,zoom=1,pick=false;const ADJ0={b:100,c:100,s:100,h:0,sep:0,gr:0,inv:0,bl:0,op:100};let adj={...ADJ0};
+ const o=document.createElement("div");o.id="rt";
+ o.innerHTML=`<div class="bar"><b>✂ Retouche : ${esc(name)}</b><button class="g" id="u">↶ Annuler</button><button class="g" id="rd">↷ Rétablir</button><button class="g" id="zo">−</button><span id="zv"></span><button class="g" id="zi">＋</button><button class="g" id="zf">Ajuster</button><span style="flex:1"></span><button class="ok" id="sv">💾 Enregistrer (remplace)</button><button id="sc">⧉ Enregistrer une copie</button><button class="g" id="cl">✖ Fermer</button></div>
+ <div class="main"><div class="stage"><div class="stack"><canvas id="c"></canvas><canvas id="sl"></canvas></div></div><div class="side">
+ <details open><summary>✂ Rogner</summary><div class="hint">Glisse sur l'image pour choisir la zone.</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px"><button id="rc" class="g">Rogner à la sélection</button><button id="rt2" class="g">Rogner les bords transparents</button></div></details>
+ <details><summary>📐 Taille</summary><div class="pr"><label>Largeur</label><input type="number" id="rw" min="1" max="8000" style="width:80px"><label style="width:auto">px</label></div><div class="pr"><label>Hauteur</label><input type="number" id="rh" min="1" max="8000" style="width:80px"><label style="width:auto">px</label></div><label class="pr"><input type="checkbox" id="lk" checked> Garder les proportions</label><label class="pr"><input type="checkbox" id="px"> Sans lissage (pixel art)</label><div style="display:flex;gap:4px;flex-wrap:wrap"><button id="rs" class="g">Appliquer</button><button class="g" data-k=".5">50 %</button><button class="g" data-k="2">200 %</button></div></details>
+ <details><summary>⟳ Pivoter / retourner</summary><div style="display:flex;gap:4px;flex-wrap:wrap"><button class="g" id="rl">⟲ 90°</button><button class="g" id="rr">⟳ 90°</button><button class="g" id="fh">⇄ Miroir H</button><button class="g" id="fv">⇅ Miroir V</button></div></details>
+ <details open><summary>🌈 Couleurs</summary>
+  ${[["b","Luminosité",0,300],["c","Contraste",0,300],["s","Saturation",0,300],["h","Teinte",-180,180],["sep","Sépia",0,100],["gr","Gris",0,100],["inv","Négatif",0,100],["bl","Flou",0,20],["op","Opacité",0,100]].map(a=>`<div class="pr"><label>${a[1]}</label><input type="range" data-a="${a[0]}" min="${a[2]}" max="${a[3]}" value="${ADJ0[a[0]]}"><span>${ADJ0[a[0]]}</span></div>`).join("")}
+  <div style="display:flex;gap:4px"><button id="ao" class="ok">Appliquer</button><button id="an" class="g">Réinitialiser</button></div></details>
+ <details><summary>🪄 Rendre une couleur transparente</summary><div class="pr"><label>Couleur</label><input type="color" id="kc" value="#ffffff"><button class="g" id="kp">💉 Choisir sur l'image</button></div><div class="pr"><label>Tolérance</label><input type="range" id="kt" min="0" max="200" value="30"><span>30</span></div><button id="ka" class="g">Rendre transparent</button></details>
+ <div class="hint" id="inf" style="padding:4px"></div></div></div>`;
+ document.body.appendChild(o);const $$=s=>o.querySelector(s),cv=$$("#c"),sl=$$("#sl");
+ const fstr=()=>`brightness(${adj.b}%) contrast(${adj.c}%) saturate(${adj.s}%) hue-rotate(${adj.h}deg) sepia(${adj.sep}%) grayscale(${adj.gr}%) invert(${adj.inv}%) blur(${adj.bl}px)`;
+ const dirty=()=>JSON.stringify(adj)!==JSON.stringify(ADJ0);
+ function draw(){cv.width=Wc.width;cv.height=Wc.height;const c=cv.getContext("2d");if(dirty()){c.filter=fstr();c.globalAlpha=adj.op/100}c.drawImage(Wc,0,0);c.filter="none";c.globalAlpha=1;
+  const z=zoom;cv.style.width=Wc.width*z+"px";cv.style.height=Wc.height*z+"px";sl.width=Wc.width*z;sl.height=Wc.height*z;const s=sl.getContext("2d");
+  if(crop){s.fillStyle="rgba(0,0,0,.45)";s.fillRect(0,0,sl.width,sl.height);s.clearRect(crop.x*z,crop.y*z,crop.w*z,crop.h*z);s.strokeStyle="#fff";s.setLineDash([6,4]);s.lineWidth=2;s.strokeRect(crop.x*z,crop.y*z,crop.w*z,crop.h*z)}
+  $$("#zv").textContent=Math.round(z*100)+"%";$$("#rw").value=Wc.width;$$("#rh").value=Wc.height;$$("#inf").textContent=`${Wc.width} × ${Wc.height} px${crop?" — sélection "+crop.w+"×"+crop.h:""}`}
+ function fit(){const st=$$(".stage");zoom=Math.min(1,(st.clientWidth-40)/Wc.width,(st.clientHeight-40)/Wc.height);draw()}
+ const push=()=>{const c=mk(Wc.width,Wc.height);c.getContext("2d").drawImage(Wc,0,0);hist.push(c);if(hist.length>15)hist.shift();redo=[]};
+ const set=c=>{Wc=c;crop=null;draw()};
+ $$("#u").onclick=()=>{const h=hist.pop();if(h){const c=mk(Wc.width,Wc.height);c.getContext("2d").drawImage(Wc,0,0);redo.push(c);set(h)}};$$("#rd").onclick=()=>{const h=redo.pop();if(h){const rest=redo;push();redo=rest;set(h)}};
+ $$("#zi").onclick=()=>{zoom=Math.min(8,zoom*1.25);draw()};$$("#zo").onclick=()=>{zoom=Math.max(.05,zoom/1.25);draw()};$$("#zf").onclick=fit;
+ const P=e=>{const r=sl.getBoundingClientRect();return{x:Math.max(0,Math.min(Wc.width,Math.round((e.clientX-r.left)/zoom))),y:Math.max(0,Math.min(Wc.height,Math.round((e.clientY-r.top)/zoom)))}};
+ sl.onpointerdown=e=>{sl.setPointerCapture(e.pointerId);const p=P(e);if(pick){const d=Wc.getContext("2d").getImageData(Math.min(p.x,Wc.width-1),Math.min(p.y,Wc.height-1),1,1).data;$$("#kc").value="#"+[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,"0")).join("");pick=false;sl.style.cursor="crosshair";return}drag=p;crop=null;draw()};
+ sl.onpointermove=e=>{if(!drag)return;const p=P(e);crop={x:Math.min(drag.x,p.x),y:Math.min(drag.y,p.y),w:Math.abs(drag.x-p.x),h:Math.abs(drag.y-p.y)};draw()};sl.onpointerup=()=>{drag=null;if(crop&&(crop.w<2||crop.h<2))crop=null;draw()};
+ $$("#rc").onclick=()=>{if(!crop)return;push();const c=mk(crop.w,crop.h);c.getContext("2d").drawImage(Wc,crop.x,crop.y,crop.w,crop.h,0,0,crop.w,crop.h);set(c);fit()};
+ $$("#rt2").onclick=()=>{const d=Wc.getContext("2d").getImageData(0,0,Wc.width,Wc.height),p=d.data,W=Wc.width,H=Wc.height;let x0=W,y0=H,x1=-1,y1=-1;for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(p[(y*W+x)*4+3]>8){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  if(x1<0||(x0===0&&y0===0&&x1===W-1&&y1===H-1))return;push();const c=mk(x1-x0+1,y1-y0+1);c.getContext("2d").drawImage(Wc,x0,y0,c.width,c.height,0,0,c.width,c.height);set(c);fit()};
+ $$("#rw").oninput=e=>{if($$("#lk").checked)$$("#rh").value=Math.round(+e.target.value*Wc.height/Wc.width)};$$("#rh").oninput=e=>{if($$("#lk").checked)$$("#rw").value=Math.round(+e.target.value*Wc.width/Wc.height)};
+ const resize=(w,h)=>{w=Math.max(1,Math.min(8000,Math.round(w)));h=Math.max(1,Math.min(8000,Math.round(h)));push();const c=mk(w,h),x=c.getContext("2d");x.imageSmoothingEnabled=!$$("#px").checked;x.imageSmoothingQuality="high";x.drawImage(Wc,0,0,w,h);set(c);fit()};
+ $$("#rs").onclick=()=>resize(+$$("#rw").value,+$$("#rh").value);o.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>resize(Wc.width*+b.dataset.k,Wc.height*+b.dataset.k));
+ const tf=fn=>{push();const c=fn();set(c);fit()};
+ $$("#rl").onclick=()=>tf(()=>{const c=mk(Wc.height,Wc.width),x=c.getContext("2d");x.translate(0,c.height);x.rotate(-Math.PI/2);x.drawImage(Wc,0,0);return c});$$("#rr").onclick=()=>tf(()=>{const c=mk(Wc.height,Wc.width),x=c.getContext("2d");x.translate(c.width,0);x.rotate(Math.PI/2);x.drawImage(Wc,0,0);return c});
+ $$("#fh").onclick=()=>tf(()=>{const c=mk(Wc.width,Wc.height),x=c.getContext("2d");x.translate(c.width,0);x.scale(-1,1);x.drawImage(Wc,0,0);return c});$$("#fv").onclick=()=>tf(()=>{const c=mk(Wc.width,Wc.height),x=c.getContext("2d");x.translate(0,c.height);x.scale(1,-1);x.drawImage(Wc,0,0);return c});
+ o.querySelectorAll("[data-a]").forEach(r=>r.oninput=()=>{adj[r.dataset.a]=+r.value;r.nextElementSibling.textContent=r.value;draw()});
+ $$("#ao").onclick=()=>{if(!dirty())return;push();const c=mk(Wc.width,Wc.height),x=c.getContext("2d");x.filter=fstr();x.globalAlpha=adj.op/100;x.drawImage(Wc,0,0);adj={...ADJ0};o.querySelectorAll("[data-a]").forEach(r=>{r.value=ADJ0[r.dataset.a];r.nextElementSibling.textContent=r.value});set(c)};
+ $$("#an").onclick=()=>{adj={...ADJ0};o.querySelectorAll("[data-a]").forEach(r=>{r.value=ADJ0[r.dataset.a];r.nextElementSibling.textContent=r.value});draw()};
+ $$("#kp").onclick=()=>{pick=true;sl.style.cursor="copy"};$$("#kt").oninput=e=>e.target.nextElementSibling.textContent=e.target.value;
+ $$("#ka").onclick=()=>{push();const x=Wc.getContext("2d"),d=x.getImageData(0,0,Wc.width,Wc.height),p=d.data,n=parseInt($$("#kc").value.slice(1),16),r=n>>16,g=n>>8&255,b=n&255,t=+$$("#kt").value;for(let i=0;i<p.length;i+=4){const dr=p[i]-r,dg=p[i+1]-g,db=p[i+2]-b;if(Math.sqrt(dr*dr+dg*dg+db*db)<=t)p[i+3]=0}x.putImageData(d,0,0);draw()};
+ const close=()=>{o.remove();window.removeEventListener("keydown",key)},key=e=>{if(e.key==="Escape")close();else if(e.ctrlKey&&e.key==="z"){e.preventDefault();$$("#u").click()}};window.addEventListener("keydown",key);
+ $$("#cl").onclick=()=>{if(!hist.length||confirm("Fermer sans enregistrer ?"))close()};
+ const blobOf=()=>{const ext=(name.match(/\.([^.]+)$/)||[0,"png"])[1].toLowerCase();let mime="image/png",e2="png";if(ext==="jpg"||ext==="jpeg"){mime="image/jpeg";e2=ext}else if(ext==="webp"){mime="image/webp";e2="webp"}
+  let src=Wc;if(dirty()){src=mk(Wc.width,Wc.height);const x=src.getContext("2d");x.filter=fstr();x.globalAlpha=adj.op/100;x.drawImage(Wc,0,0)}return new Promise(r=>src.toBlob(b=>r({b,e2}),mime,.92))};
+ $$("#sv").onclick=async()=>{try{const{b,e2}=await blobOf();const fin=await replaceFile(name,b,e2);close();sel=fin;grid();panel();$("st").textContent="✔ image enregistrée"}catch(e){alert(e.message)}};
+ $$("#sc").onclick=async()=>{try{const{b,e2}=await blobOf(),stem=name.replace(/\.[^.]+$/,""),up=await AS().upload(b,stem+"-retouchee."+e2);META[up.name]={...meta(name)};touch();close();sel=up.name;await refresh()}catch(e){alert(e.message)}};
+ fit()}
+// ---------- chargement
+async function refresh(){try{LIST=await AS().list()}catch(e){msg(e.message);return}cats();grid();panel()}
+async function loadU(){$("st").textContent="Analyse des utilisations…";try{U=await Events.usage()}catch(e){U={}}$("st").textContent="";grid();panel()}
+$("bU").onclick=loadU;
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");try{await Studio.ensureProject();const m=await Studio.doc("images-meta",{});META=m&&!Array.isArray(m)?m:{};await refresh();loadU()}catch(e){msg(e.message)}}
+Studio.onProject(()=>{sel=null;init()});
+init();
+</script>
+</body>
+</html>

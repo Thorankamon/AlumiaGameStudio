@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion de projets</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+button,select,input,textarea{font:inherit}
+button{background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:6px 12px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}button.ok{background:#16a34a}button:disabled{opacity:.4;cursor:default}
+select,input[type=text],input[type=number],textarea{padding:5px 7px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1e293b;width:100%}
+textarea{min-height:70px;resize:vertical}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+#L{width:320px;background:#f8fafc;border-right:1px solid #cbd5e1;overflow:auto;padding:8px;flex-shrink:0}
+#D{flex:1;overflow:auto;padding:16px 20px}
+.card{padding:9px 11px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;margin-bottom:7px;cursor:pointer}
+.card:hover{border-color:#93c5fd}.card.on{border-color:#3b82f6;background:#eff6ff}
+.card small{display:block;color:#64748b;margin-top:2px}
+.badge{background:#16a34a;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px}
+h2{margin-bottom:4px}h4{margin:16px 0 6px}
+.f{margin:8px 0;max-width:520px}.f label{display:block;margin-bottom:3px;color:#475569}
+.row{display:flex;gap:8px;max-width:520px}.row>*{flex:1}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-width:520px;margin:8px 0}
+.stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px;text-align:center}.stat b{display:block;font-size:20px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.hint{color:#64748b;font-size:12px}
+</style>
+</head>
+<body>
+<div id="top"><b>📁 Gestion de projets</b><button id="bNew">＋ Nouveau projet</button><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="L"><div id="list"></div></aside>
+ <section id="D"><div class="hint">Chaque projet est un jeu complet, rangé dans son propre dossier. Choisis-en un à gauche, ou crée-en un nouveau.</div></section>
+</div>
+<script src="studio-api.js"></script>
+<script>
+const $=id=>document.getElementById(id),A=Studio.api,enc=encodeURIComponent;
+const RES=[["640×480",640,480],["816×624 (style RPG Maker)",816,624],["1280×720 (HD)",1280,720],["1920×1080 (Full HD)",1920,1080]];
+let names=[],info={},sel=null;
+const msg=t=>{$("msg").hidden=!t;$("msg").textContent=t||""};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const g=async(n,u)=>{try{return await A("GET","/api/p/"+enc(n)+u)}catch(e){return null}};
+async function stats(n){const[m,t,i,a,d]=await Promise.all([g(n,"/col/maps"),g(n,"/col/tilesets"),g(n,"/assets/images"),g(n,"/assets/audio"),g(n,"/doc/projet")]);
+ return{maps:m||[],ts:t||[],imgs:(i||[]).length,aud:(a||[]).length,doc:(d&&!Array.isArray(d))?d:{}}}
+async function refresh(){msg("");
+ try{names=await Studio.projects()}catch(e){msg(e.message);$("list").innerHTML="";return}
+ info={};await Promise.all(names.map(async n=>info[n]=await stats(n)));
+ if(!sel||!names.includes(sel))sel=names.includes(Studio.project)?Studio.project:(names[0]||null);
+ renderList();renderDetail()}
+function renderList(){$("list").innerHTML=names.length?names.map(n=>{const i=info[n];
+ return`<div class="card${n===sel?" on":""}" data-n="${esc(n)}"><b>${esc(i.doc.titre||n)}</b>${n===Studio.project?'<span class="badge">ACTIF</span>':""}<small>📂 ${esc(n)} — ${i.maps.length} map(s), ${i.ts.length} tileset(s)</small></div>`}).join(""):'<div class="hint">Aucun projet. Clique sur « Nouveau projet ».</div>'}
+$("list").onclick=e=>{const c=e.target.closest(".card");if(c){sel=c.dataset.n;renderList();renderDetail()}};
+$("list").ondblclick=e=>{const c=e.target.closest(".card");if(c)activate(c.dataset.n)};
+function renderDetail(){if(!sel){$("D").innerHTML='<div class="hint">Aucun projet pour l\'instant.</div>';return}
+ const i=info[sel],d=i.doc,r=d.res||{w:816,h:624},std=RES.find(x=>x[1]===r.w&&x[2]===r.h);
+ $("D").innerHTML=`<h2>${esc(d.titre||sel)} ${sel===Studio.project?'<span class="badge">ACTIF</span>':""}</h2>
+ <div class="hint">Dossier : projets/${esc(sel)}/ ${d.cree?" — créé le "+new Date(d.cree).toLocaleDateString("fr-BE"):""}</div>
+ <div class="acts">${sel===Studio.project?"":'<button class="ok" id="aAct">★ Utiliser ce projet</button>'}<button class="g" id="aRen">✏️ Renommer le dossier</button><button class="g" id="aDup">⧉ Dupliquer</button><button class="r" id="aDel">🗑 Supprimer</button></div>
+ <div class="stats"><div class="stat"><b>${i.maps.length}</b>maps</div><div class="stat"><b>${i.ts.length}</b>tilesets</div><div class="stat"><b>${i.imgs}</b>images</div><div class="stat"><b>${i.aud}</b>sons / musiques</div></div>
+ <h4>Réglages du jeu</h4>
+ <div class="f"><label>Titre du jeu</label><input type="text" id="fT" value="${esc(d.titre||sel)}"></div>
+ <div class="row"><div class="f"><label>Auteur</label><input type="text" id="fA" value="${esc(d.auteur)}"></div><div class="f"><label>Version</label><input type="text" id="fV" value="${esc(d.version||"0.1")}"></div></div>
+ <div class="f"><label>Description</label><textarea id="fD">${esc(d.description)}</textarea></div>
+ <div class="f"><label>Taille de l'écran du jeu</label><select id="fR">${RES.map(x=>`<option value="${x[1]}x${x[2]}" ${std===x?"selected":""}>${x[0]}</option>`).join("")}<option value="c" ${std?"":"selected"}>Personnalisée</option></select></div>
+ <div class="row" id="fRc" ${std?"hidden":""}><div class="f"><label>Largeur (px)</label><input type="number" id="fW" value="${r.w}" min="160" max="3840"></div><div class="f"><label>Hauteur (px)</label><input type="number" id="fH" value="${r.h}" min="120" max="2160"></div></div>
+ <div class="f"><label>Map de départ du jeu</label><select id="fM"><option value="">— aucune —</option>${i.maps.map(m=>`<option value="${esc(m.id)}" ${m.id===d.startMap?"selected":""}>${esc(m.name||m.id)}</option>`).join("")}</select></div>
+ <div class="acts"><button id="aSave">💾 Enregistrer les réglages</button></div>`;
+ $("fR").onchange=e=>$("fRc").hidden=e.target.value!=="c";
+ $("aSave").onclick=saveInfo;$("aRen").onclick=rename;$("aDup").onclick=dup;$("aDel").onclick=del;if($("aAct"))$("aAct").onclick=()=>activate(sel)}
+async function saveInfo(){const v=$("fR").value;let w,h;if(v==="c"){w=+$("fW").value||816;h=+$("fH").value||624}else[w,h]=v.split("x").map(Number);
+ const doc={...info[sel].doc,name:sel,titre:$("fT").value.trim()||sel,auteur:$("fA").value.trim(),version:$("fV").value.trim(),description:$("fD").value,res:{w,h},startMap:$("fM").value};
+ try{await A("PUT","/api/p/"+enc(sel)+"/doc/projet",doc);$("st").textContent="✔ enregistré "+new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"});await refresh()}catch(e){alert(e.message)}}
+function activate(n){Studio.setProject(n);refresh()}
+$("bNew").onclick=async()=>{const n=prompt("Nom du nouveau projet (lettres, chiffres, espaces, - _ .) :","MonJeu");if(!n)return;
+ try{const r=await Studio.createProject(n.trim());sel=r.name;await refresh()}catch(e){alert(e.message)}};
+async function rename(){const n=prompt("Nouveau nom du dossier :",sel);if(!n||n.trim()===sel)return;
+ try{const r=await Studio.renameProject(sel,n.trim());const d={...info[sel].doc,name:r.name};await A("PUT","/api/p/"+enc(r.name)+"/doc/projet",d);sel=r.name;await refresh()}catch(e){alert(e.message)}}
+async function dup(){const n=prompt("Nom de la copie (lettres, chiffres, espaces, - _ .) :",sel+"-copie");if(!n)return;
+ try{const r=await Studio.duplicateProject(sel,n.trim());const d={...info[sel].doc,name:r.name,titre:(info[sel].doc.titre||sel)+" (copie)"};await A("PUT","/api/p/"+enc(r.name)+"/doc/projet",d);sel=r.name;await refresh()}catch(e){alert(e.message)}}
+async function del(){const t=prompt(`Supprimer DÉFINITIVEMENT le projet « ${sel} » avec toutes ses maps, tilesets, images et sons ?\n\nPour confirmer, retape son nom :`);
+ if(t===null)return;if(t.trim()!==sel){alert("Le nom ne correspond pas : rien n'a été supprimé.");return}
+ try{await Studio.deleteProject(sel);sel=null;await Studio.ensureProject();await refresh()}catch(e){alert(e.message)}}
+Studio.onProject(refresh);
+(async()=>{try{await Studio.ensureProject()}catch(e){msg(e.message);return}refresh()})();
+</script>
+</body>
+</html>

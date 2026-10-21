@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des effets</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top,#tools{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+#tools{background:#334155;font-size:12px}
+button,select,input{font:inherit}
+button{background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}
+select,input[type=text],input[type=number]{padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1e293b}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+aside{background:#f8fafc;overflow:auto;padding:8px;flex-shrink:0}
+#L{width:230px;border-right:1px solid #cbd5e1}#R{width:360px;border-left:1px solid #cbd5e1}
+#C{flex:1;display:flex;flex-direction:column;min-width:0}
+#view{flex:1;overflow:auto;background:#475569;display:flex;align-items:center;justify-content:center;padding:10px}
+#cv{background:#000;border-radius:6px;max-width:100%;image-rendering:pixelated}
+.bt{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}.bt .full{grid-column:1/3}
+.it{padding:6px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent}.it:hover{background:#e2e8f0}.it.on{background:#bfdbfe;border-color:#3b82f6}.it small{display:block;color:#64748b}
+h4{margin:12px 0 6px;font-size:13px}h4:first-child{margin-top:0}.hint,#info{color:#64748b;font-size:12px}#info{background:#f1f5f9;padding:4px 10px}
+.f{display:flex;align-items:center;gap:6px;margin:4px 0}.f label{flex:1}.f input[type=text]{width:190px}.f input[type=number]{width:70px}
+.chk{display:flex;flex-wrap:wrap;gap:4px 12px;margin:4px 0}.chk label{display:flex;gap:4px;align-items:center}
+.pre{display:flex;flex-wrap:wrap;gap:4px}.pre button{background:#e2e8f0;color:#1e293b;padding:3px 8px}
+.card{border:1px solid #cbd5e1;border-radius:8px;background:#fff;margin:6px 0;padding:6px 8px}.card.off{opacity:.55}
+.card .hd{display:flex;align-items:center;gap:6px;font-weight:600}.card .hd span{flex:1}.card .hd button{padding:1px 6px;background:#e2e8f0;color:#1e293b}.card .hd button.r{background:#ef4444;color:#fff}
+.pr{display:flex;align-items:center;gap:6px;margin:3px 0}.pr label{width:150px;color:#334155;font-size:12px}.pr input[type=range]{flex:1}.pr span{width:38px;text-align:right;color:#64748b;font-size:12px}.pr select{flex:1}
+</style>
+</head>
+<body>
+<div id="top"><b>✨ Gestion des effets</b><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="L"><div class="bt"><button id="bNew" class="full">＋ Nouvel effet</button><button class="g" id="bDup">⧉ Dupliquer</button><button class="r" id="bDel">🗑 Supprimer</button></div>
+  <div class="hint">Un effet est une <b>pile</b> d'effets visuels cumulables (ombre + reflet + grésillement…). Tu l'appliques ensuite au héros, à un PNJ, à un event ou à une image avec la commande « Appliquer un effet ».</div>
+  <h4>Mes effets</h4><div id="list"></div></aside>
+ <section id="C">
+  <div id="tools"><label>Aperçu sur :</label><select id="subj"></select><label>Fond :</label><select id="bg"><option value="grass">🌿 Herbe</option><option value="water">🌊 Eau</option><option value="stone">🪨 Pierre</option><option value="dark">🌑 Sombre</option><option value="chk">▦ Damier</option></select>
+   <label>Zoom</label><select id="zm"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>6</option></select><button class="g" id="bPlay">⏸ Pause</button></div>
+  <div id="view"><canvas id="cv" width="640" height="360"></canvas></div><div id="info">Aperçu en direct : chaque réglage se voit tout de suite.</div>
+ </section>
+ <aside id="R"><div id="ed"><div class="hint">Choisis un effet ou crées-en un nouveau.</div></div></aside>
+</div>
+<script src="studio-api.js"></script>
+<script src="studio-chars.js"></script>
+<script src="studio-fx.js"></script>
+<script src="studio-events.js"></script>
+<script>
+const $=id=>document.getElementById(id),cv=$("cv"),cx=cv.getContext("2d"),col=()=>Studio.col("effets","effet");
+const TG=[["hero","Héros"],["pnj","PNJ"],["event","Events"],["image","Images"],["screen","Écran"]];
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let E=null,src=null,t=0,last=0,run=true,pat={};
+const msg=x=>{$("msg").hidden=!x;$("msg").textContent=x||""};
+const auto=Studio.autosave(()=>save(),700);
+const touch=()=>{$("st").textContent="● modifié";auto()};
+async function save(){if(!E)return;try{await col().save(E.id,E);$("st").textContent="✔ enregistré "+new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"})}catch(e){$("st").textContent="⚠ "+e.message}}
+// ---------- sujets d'aperçu
+function sample(){const c=document.createElement("canvas");c.width=32;c.height=48;const x=c.getContext("2d"),r=(col,a,b,w,h)=>{x.fillStyle=col;x.fillRect(a,b,w,h)};
+ r("#e8b48a",11,6,10,10);r("#5b3a1e",10,3,12,6);r("#5b3a1e",9,6,2,8);r("#5b3a1e",21,6,2,8);r("#222",13,10,2,2);r("#222",18,10,2,2);r("#3b6fd1",9,16,14,16);r("#2d57a8",9,28,14,4);r("#e8b48a",6,17,3,10);r("#e8b48a",23,17,3,10);r("#4a3a2a",10,32,5,13);r("#4a3a2a",17,32,5,13);r("#2a1d12",9,44,7,3);r("#2a1d12",16,44,7,3);return c}
+async function setSubject(v){src=sample();if(!v||v==="sample")return;const[k,id]=[v.slice(0,v.indexOf(":")),v.slice(v.indexOf(":")+1)];
+ try{if(k==="char"){const d=await Studio.col("characters","character").get(id),im=await Chars.loadImg(Chars.assets().url(d.image)),c=document.createElement("canvas");c.width=d.fw;c.height=d.fh;c.getContext("2d").drawImage(im,(d.format==="mz"?1:0)*d.fw,0,d.fw,d.fh,0,0,d.fw,d.fh);src=c}
+  else{const im=await Chars.loadImg(Studio.assets("images").url(id)),c=document.createElement("canvas"),k2=Math.min(1,160/Math.max(im.width,im.height));c.width=Math.round(im.width*k2);c.height=Math.round(im.height*k2);c.getContext("2d").drawImage(im,0,0,c.width,c.height);src=c}}catch(e){msg(e.message)}}
+async function subjList(){const o=['<option value="sample">🧍 Sprite d\'exemple</option>'];
+ try{(await Studio.col("characters","character").list()).forEach(c=>o.push(`<option value="char:${c.id}">Character : ${esc(c.name||c.id)}</option>`))}catch(e){}
+ try{(await Studio.assets("images").list()).forEach(i=>o.push(`<option value="img:${esc(i.name)}">Image : ${esc(i.name)}</option>`))}catch(e){}
+ $("subj").innerHTML=o.join("")}
+$("subj").onchange=e=>setSubject(e.target.value);
+// ---------- fonds
+function bg(w,h){const k=$("bg").value;
+ if(k==="grass"){cx.fillStyle="#4c9a50";cx.fillRect(0,0,w,h);cx.fillStyle="#44904a";for(let y=0;y<h;y+=24)for(let x=(y/24%2)*24;x<w;x+=48)cx.fillRect(x,y,24,24)}
+ else if(k==="water"){const g=cx.createLinearGradient(0,0,0,h);g.addColorStop(0,"#3f86c9");g.addColorStop(1,"#1d4f8a");cx.fillStyle=g;cx.fillRect(0,0,w,h);cx.strokeStyle="rgba(255,255,255,.18)";cx.lineWidth=2;for(let y=14;y<h;y+=20){cx.beginPath();for(let x=0;x<=w;x+=8)cx.lineTo(x,y+Math.sin(x*.05+y+t*2)*3);cx.stroke()}}
+ else if(k==="stone"){cx.fillStyle="#8d8d93";cx.fillRect(0,0,w,h);cx.fillStyle="#7e7e85";for(let y=0;y<h;y+=32)for(let x=(y/32%2)*32;x<w;x+=64)cx.fillRect(x,y,32,32)}
+ else if(k==="dark"){cx.fillStyle="#12121a";cx.fillRect(0,0,w,h)}
+ else{cx.fillStyle="#fff";cx.fillRect(0,0,w,h);cx.fillStyle="#d9dde3";for(let y=0;y<h;y+=16)for(let x=(y/16%2)*16;x<w;x+=32)cx.fillRect(x,y,16,16)}}
+function frame(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(run)t+=dt;const w=cv.width,h=cv.height;cx.imageSmoothingEnabled=false;bg(w,h);
+ if(src){const z=+$("zm").value,r=Fx.render(src,E?E.stack:[],t),cw=r.canvas.width*z,ch=r.canvas.height*z;cx.drawImage(r.canvas,Math.round(w/2-(r.ox+src.width/2)*z),Math.round(h*.6-(r.oy+src.height)*z),cw,ch)}
+ requestAnimationFrame(frame)}
+$("bPlay").onclick=()=>{run=!run;$("bPlay").textContent=run?"⏸ Pause":"▶ Lecture"};
+// ---------- éditeur de l'effet
+function paramRow(c,f){const id=Math.random().toString(36).slice(2,8),v=c[f.k];
+ if(f.t==="col")return`<div class="pr"><label>${f.l}</label><input type="color" data-k="${f.k}" value="${v}"></div>`;
+ if(f.t==="sel")return`<div class="pr"><label>${f.l}</label><select data-k="${f.k}">${f.o.map(o=>`<option value="${o[0]}" ${o[0]===v?"selected":""}>${o[1]}</option>`).join("")}</select></div>`;
+ return`<div class="pr"><label>${f.l}</label><input type="range" data-k="${f.k}" min="${f.min}" max="${f.max}" step="${f.step||1}" value="${v}"><span>${v}</span></div>`}
+function render(){if(!E){$("ed").innerHTML='<div class="hint">Choisis un effet ou crées-en un nouveau.</div>';return}
+ const T=E.targets;
+ $("ed").innerHTML=`<div class="f"><label>Nom</label><input type="text" id="nm" value="${esc(E.name)}"></div>
+ <div class="f"><label>Note</label><input type="text" id="nt" value="${esc(E.note)}"></div>
+ <div class="hint">S'applique à :</div><div class="chk">${TG.map(g=>`<label><input type="checkbox" data-t="${g[0]}" ${T[g[0]]?"checked":""}>${g[1]}</label>`).join("")}</div>
+ <div class="f"><label>Durée (secondes, 0 = permanent)</label><input type="number" id="du" min="0" step="0.5" value="${E.duration||0}"></div>
+ <h4>Modèles rapides <span class="hint">(s'ajoutent à la pile)</span></h4><div class="pre">${Object.keys(Fx.PRESETS).map(n=>`<button data-p="${esc(n)}">${n}</button>`).join("")}</div>
+ <h4>Pile d'effets (dessinés dans cet ordre)</h4>
+ <div id="stack">${E.stack.map((c,i)=>`<div class="card${c.on===false?" off":""}" data-i="${i}"><div class="hd"><input type="checkbox" data-on="1" ${c.on!==false?"checked":""}><span>${Fx.COMP[c.type].ic} ${Fx.COMP[c.type].n}</span><button data-a="u">▲</button><button data-a="d">▼</button><button class="r" data-a="x">✖</button></div>${Fx.COMP[c.type].p.map(f=>paramRow(c,f)).join("")}</div>`).join("")||'<div class="hint">Aucun effet : ajoutes-en un ci-dessous.</div>'}</div>
+ <select id="add" style="width:100%;margin-top:6px"><option value="">＋ Ajouter un effet…</option>${Object.keys(Fx.COMP).map(k=>`<option value="${k}">${Fx.COMP[k].ic} ${Fx.COMP[k].n}</option>`).join("")}</select>
+ <button class="g" id="clr" style="width:100%;margin-top:6px">Vider la pile</button>`;
+ $("nm").oninput=e=>{E.name=e.target.value;touch();const o=document.querySelector("#list .it.on");if(o)o.firstChild.textContent=E.name||E.id};$("nt").oninput=e=>{E.note=e.target.value;touch()};
+ $("du").oninput=e=>{E.duration=+e.target.value||0;touch()};
+ $("ed").querySelectorAll("[data-t]").forEach(c=>c.onchange=()=>{E.targets[c.dataset.t]=c.checked;touch()});
+ $("ed").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{Fx.PRESETS[b.dataset.p].forEach(c=>E.stack.push({...Fx.defs(c.type),...c}));touch();render()});
+ $("add").onchange=e=>{if(!e.target.value)return;E.stack.push(Fx.defs(e.target.value));touch();render()};
+ $("clr").onclick=()=>{if(E.stack.length&&confirm("Vider toute la pile ?")){E.stack=[];touch();render()}};
+ $("stack").oninput=e=>{const card=e.target.closest(".card");if(!card)return;const c=E.stack[+card.dataset.i],k=e.target.dataset.k;if(e.target.dataset.on){c.on=e.target.checked;card.classList.toggle("off",!c.on);touch();return}if(!k)return;
+  c[k]=e.target.type==="range"?+e.target.value:e.target.value;const sp=e.target.nextElementSibling;if(sp&&sp.tagName==="SPAN")sp.textContent=c[k];touch()};
+ $("stack").onclick=e=>{const card=e.target.closest(".card"),a=e.target.dataset.a;if(!card||!a)return;const i=+card.dataset.i,s=E.stack;
+  if(a==="x")s.splice(i,1);else if(a==="u"&&i>0)[s[i-1],s[i]]=[s[i],s[i-1]];else if(a==="d"&&i<s.length-1)[s[i+1],s[i]]=[s[i],s[i+1]];touch();render()}}
+// ---------- liste
+async function list(id){const l=await col().list();$("list").innerHTML=l.length?l.map(x=>`<div class="it${x.id===id?" on":""}" data-id="${x.id}">${esc(x.name||x.id)}<small>${x.id}</small></div>`).join(""):'<div class="hint">Aucun effet.</div>';return l}
+$("list").onclick=e=>{const r=e.target.closest(".it");if(r)load(r.dataset.id)};
+async function load(id){if(E&&$("st").textContent.startsWith("●"))await save();
+ try{E=await col().get(id);E.id=id}catch(e){msg(e.message);return}
+ E.stack=E.stack||[];E.targets={hero:true,pnj:true,event:true,image:true,screen:false,...(E.targets||{})};E.note=E.note||"";E.duration=E.duration||0;
+ localStorage.setItem("jv_lastfx_"+Studio.project,id);await list(id);$("st").textContent="";render()}
+$("bNew").onclick=async()=>{try{const n=(await col().list()).length+1,r=await col().add({name:"Effet "+n,note:"",targets:{hero:true,pnj:true,event:true,image:true,screen:false},duration:0,stack:[]});await load(r.id)}catch(e){alert(e.message)}};
+$("bDup").onclick=async()=>{if(!E)return;try{await save();const c=JSON.parse(JSON.stringify(E));delete c.id;c.name=(E.name||"Effet")+" (copie)";const r=await col().add(c);await load(r.id)}catch(e){alert(e.message)}};
+$("bDel").onclick=async()=>{if(!E)return;let n=0;try{n=((await Events.usage())["fx:"+E.id]||[]).length}catch(e){}if(!confirm(`Supprimer l'effet « ${E.name||E.id} » ?`+(n?`\n\n⚠ Il est utilisé ${n} fois : ces events ne l'appliqueront plus.`:"")))return;try{await col().remove(E.id);E=null;render();const l=await list();if(l.length)await load(l[0].id)}catch(e){alert(e.message)}};
+window.addEventListener("beforeunload",()=>{if(E&&$("st").textContent.startsWith("●"))save()});
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");try{await Studio.ensureProject();await subjList();await setSubject("sample");const l=await list();
+  if(!l.length){for(const n of ["🪞 Reflet d'eau","⚡ Grésillement électrique","📺 Hologramme","👻 Fantôme"]){await col().add({name:n.replace(/^\S+\s/,""),note:"",targets:{hero:true,pnj:true,event:true,image:true,screen:false},duration:0,stack:Fx.PRESETS[n].map(c=>({...Fx.defs(c.type),...c}))})}}
+  const l2=await list();if(l2.length)await load((l2.find(x=>x.id===localStorage.getItem("jv_lastfx_"+Studio.project))||l2[0]).id)}catch(e){msg(e.message)}}
+Studio.onProject(()=>{E=null;render();init()});
+src=sample();init();requestAnimationFrame(frame);
+</script>
+</body>
+</html>

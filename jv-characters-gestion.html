@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des Characters</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top,#tools{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+#tools{background:#334155;font-size:12px}
+button,select,input{font:inherit}
+button{background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}button.on{outline:2px solid #fbbf24}
+select,input[type=text],input[type=number]{padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1e293b}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+aside{background:#f8fafc;overflow:auto;padding:8px;flex-shrink:0}
+#L{width:220px;border-right:1px solid #cbd5e1}#R{width:340px;border-left:1px solid #cbd5e1}
+#C{flex:1;display:flex;flex-direction:column;min-width:0}
+#wrap{flex:1;overflow:auto;background:#94a3b8;padding:16px}
+#cv{display:block;image-rendering:pixelated;background:repeating-conic-gradient(#d1d5db 0 25%,#fff 0 50%) 0 0/16px 16px;box-shadow:0 0 0 1px #0004;cursor:pointer}
+#info{background:#f1f5f9;color:#64748b;font-size:12px;padding:4px 10px}
+.bt{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}.bt button:first-child{grid-column:1/3}
+.it{padding:6px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent}.it:hover{background:#e2e8f0}.it.on{background:#bfdbfe;border-color:#3b82f6}.it small{display:block;color:#64748b}
+h4{margin:14px 0 6px;font-size:13px}h4:first-child{margin-top:0}
+.f{display:flex;align-items:center;gap:6px;margin:4px 0}.f label{flex:1}.f input[type=number]{width:70px}.f input[type=range]{width:130px}.f span{width:40px;text-align:right;color:#64748b}.f select{width:190px}
+.hint{color:#64748b;font-size:12px}
+#strip{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0;max-height:230px;overflow:auto}
+.fr{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:3px;width:76px;text-align:center}.fr canvas{display:block;margin:0 auto;background:repeating-conic-gradient(#e5e7eb 0 25%,#fff 0 50%) 0 0/8px 8px}
+.fr div{display:flex;justify-content:center;gap:1px}.fr button{padding:0 4px;background:#e2e8f0;color:#1e293b;font-size:11px}.fr button.on{background:#3b82f6;color:#fff}.fr input{width:36px;padding:0 2px;font-size:11px}
+#pv{display:block;margin:6px auto;background:repeating-conic-gradient(#e5e7eb 0 25%,#fff 0 50%) 0 0/12px 12px;border:1px solid #cbd5e1;border-radius:6px;image-rendering:pixelated}
+</style>
+</head>
+<body>
+<div id="top"><b>🧍 Gestion des Characters</b><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="L"><div class="bt"><button id="bNew">＋ Nouveau character</button><button class="g" id="bRen">✏️ Renommer</button><button class="g" id="bDup">⧉ Dupliquer</button><button class="r" id="bDel" style="grid-column:1/3">🗑 Supprimer</button></div>
+  <h4>Mes characters</h4><div id="list"></div></aside>
+ <section id="C">
+  <div id="tools"><label>Image :</label><select id="shSel"></select><button class="g" id="shAdd">＋ Ajouter une image</button><button class="g" id="shDel">🗑 Retirer cette image</button><button class="g" id="zOut">−</button><span id="zv">200%</span><button class="g" id="zIn">＋</button></div>
+  <div id="wrap"><canvas id="cv"></canvas></div><div id="info">Clique (ou glisse) sur les frames pour les sélectionner, double-clic = ajouter à l'animation.</div>
+ </section>
+ <aside id="R">
+  <h4>Taille et découpage de l'image</h4>
+  <div class="f"><label>Format</label><select id="fmt"></select></div>
+  <div class="f"><label>Largeur d'une frame (px)</label><input type="number" id="fw" min="1" max="1024"></div>
+  <div class="f"><label>Hauteur d'une frame (px)</label><input type="number" id="fh" min="1" max="1024"></div>
+  <div class="f"><label>Colonnes (frames par ligne)</label><input type="number" id="co" min="1" max="64"></div>
+  <div class="f"><label>Lignes</label><input type="number" id="ro" min="1" max="64"></div>
+  <button class="g" id="bFit" style="width:100%">Ajuster la taille des frames à l'image</button>
+  <div class="hint" id="dims" style="margin-top:4px"></div>
+  <h4>Taille dans le jeu</h4>
+  <div class="f"><label>Échelle du sprite</label><input type="range" id="sc" min="25" max="400" step="5"><span id="scv"></span></div>
+  <div class="hint" id="scd"></div>
+  <h4>Animations</h4>
+  <select id="aSel" style="width:100%"></select>
+  <div class="bt" style="margin-top:6px"><button id="aNew">＋ Nouvelle</button><button class="g" id="aStd">Animations standard</button><button class="g" id="aDup">⧉ Dupliquer</button><button class="r" id="aDel">🗑 Supprimer</button></div>
+  <div id="aBox" hidden>
+   <div class="f"><label>Nom</label><input type="text" id="aName" style="width:190px"></div>
+   <div class="f"><label>Vitesse (images / s)</label><input type="range" id="aFps" min="1" max="30"><span id="aFpsv"></span></div>
+   <label class="f"><input type="checkbox" id="aLoop"> Répéter en boucle</label>
+   <div class="hint">Frames de l'animation (◀ ▶ ordre, ↔ miroir, × durée, ✖ retirer) :</div>
+   <div id="strip"></div>
+   <div class="bt"><button id="aAddSel">＋ Ajouter la sélection</button><button class="g" id="aAddRow">＋ Ajouter la ligne</button><button class="g" id="aClr" style="grid-column:1/3">Vider l'animation</button></div>
+   <canvas id="pv" width="180" height="180"></canvas><div class="hint" style="text-align:center" id="pvi"></div>
+  </div>
+ </aside>
+</div>
+<script src="studio-api.js"></script>
+<script src="studio-chars.js"></script>
+<script>
+const $=id=>document.getElementById(id),cv=$("cv"),pv=$("pv");
+let C=null,cs="main",imgs={},selF={c:0,r:0,w:1,h:1},ai=0,zoom=2,drag=null;
+const msg=x=>{$("msg").hidden=!x;$("msg").textContent=x||""};
+const auto=Studio.autosave(()=>save(),800);
+const touch=()=>{$("st").textContent="● modifié";auto()};
+async function save(){if(!C)return;try{await Chars.col().save(C.id,C);$("st").textContent="✔ enregistré "+new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"})}catch(e){$("st").textContent="⚠ "+e.message}}
+const sh=id=>id==="main"?C:(C.sheets||[]).find(s=>s.id===id);
+const cur=()=>sh(cs)||C;
+const im=id=>{const s=sh(id);return s&&imgs[id+"|"+s.image]};
+const A=()=>C&&C.anims[ai];
+async function loadImgs(){imgs={};const all=[{id:"main",...{image:C.image}},...(C.sheets||[])];
+ await Promise.all(all.map(async s=>{try{imgs[s.id+"|"+s.image]=await Chars.loadImg(Chars.assets().url(s.image))}catch(e){}}))}
+// ---------- feuille affichée
+function draw(){if(!C)return;const s=cur(),i=im(cs);const c=cv.getContext("2d");
+ if(!i){cv.width=200;cv.height=40;c.fillStyle="#64748b";c.fillText("Image introuvable",10,24);return}
+ const z=zoom;cv.width=i.width*z;cv.height=i.height*z;c.imageSmoothingEnabled=false;c.drawImage(i,0,0,cv.width,cv.height);
+ const fw=s.fw*z,fh=s.fh*z;c.strokeStyle="rgba(0,110,255,.7)";c.lineWidth=1;c.beginPath();
+ for(let x=0;x<=s.cols;x++){c.moveTo(x*fw+.5,0);c.lineTo(x*fw+.5,s.rows*fh)}for(let y=0;y<=s.rows;y++){c.moveTo(0,y*fh+.5);c.lineTo(s.cols*fw,y*fh+.5)}c.stroke();
+ const a=A();if(a){c.font="bold 12px sans-serif";c.textBaseline="top";a.frames.forEach((f,n)=>{if(f.s!==cs)return;c.fillStyle="#16a34aee";c.fillRect(f.c*fw+2,f.r*fh+2,18,15);c.fillStyle="#fff";c.fillText(n+1,f.c*fw+5,f.r*fh+3)})}
+ c.fillStyle="rgba(251,191,36,.35)";c.fillRect(selF.c*fw,selF.r*fh,selF.w*fw,selF.h*fh);c.strokeStyle="#f59e0b";c.lineWidth=2;c.strokeRect(selF.c*fw,selF.r*fh,selF.w*fw,selF.h*fh)}
+function cellAt(e){const r=cv.getBoundingClientRect(),s=cur();return{c:Math.max(0,Math.min(s.cols-1,Math.floor((e.clientX-r.left)/zoom/s.fw))),r:Math.max(0,Math.min(s.rows-1,Math.floor((e.clientY-r.top)/zoom/s.fh)))}}
+const setSel=(a,b)=>{selF={c:Math.min(a.c,b.c),r:Math.min(a.r,b.r),w:Math.abs(a.c-b.c)+1,h:Math.abs(a.r-b.r)+1};draw()};
+cv.onpointerdown=e=>{if(!C||e.button)return;cv.setPointerCapture(e.pointerId);drag=cellAt(e);setSel(drag,drag)};
+cv.onpointermove=e=>{if(!C)return;const p=cellAt(e);if(drag)setSel(drag,p);$("info").textContent=`Frame colonne ${p.c+1}, ligne ${p.r+1} (${Chars.DIRS[p.r]||"—"}) — sélection : ${selF.w}×${selF.h}`};
+cv.onpointerup=()=>drag=null;
+cv.ondblclick=()=>addSel();
+const setZoom=z=>{zoom=Math.max(1,Math.min(8,z));$("zv").textContent=zoom*100+"%";draw()};
+$("zIn").onclick=()=>setZoom(zoom+1);$("zOut").onclick=()=>setZoom(zoom-1);
+// ---------- feuilles (image principale + supplémentaires)
+function shList(){const l=[{id:"main",name:"Feuille principale"},...(C.sheets||[])];$("shSel").innerHTML=l.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");$("shSel").value=cs}
+$("shSel").onchange=e=>{cs=e.target.value;selF={c:0,r:0,w:1,h:1};sync();draw()};
+$("shAdd").onclick=async()=>{if(!C)return;const v=await Chars.dialog({title:"Ajouter une image à ce character",name:false,file:"optional"});if(!v)return;
+ const n=prompt("Nom de cette image (ex : Attaque, Course) :","Feuille "+((C.sheets||[]).length+2));if(!n)return;
+ try{const s=await Chars.makeSheet(v,C.name+"-"+n);C.sheets=C.sheets||[];const id="s"+Date.now().toString(36);C.sheets.push({id,name:n.trim(),...s});cs=id;await loadImgs();touch();sync();draw()}catch(e){alert(e.message)}};
+$("shDel").onclick=async()=>{if(!C||cs==="main"){alert("La feuille principale ne peut pas être retirée (supprime le character à la place).");return}
+ const s=sh(cs);if(!confirm(`Retirer l'image « ${s.name} » ? Les frames d'animation qui l'utilisent seront retirées.`))return;
+ C.anims.forEach(a=>a.frames=a.frames.filter(f=>f.s!==cs));C.sheets=C.sheets.filter(x=>x.id!==cs);
+ if(await unshared(s.image)&&confirm("Supprimer aussi le fichier image ?"))await Chars.assets().remove(s.image).catch(()=>{});cs="main";touch();sync();draw()};
+async function unshared(image){try{return!(await Chars.col().getAll()).some(x=>x&&x.id!==C.id&&(x.image===image||(x.sheets||[]).some(s=>s.image===image)))&&!C.sheets.some(s=>s.image===image)&&C.image!==image}catch(e){return false}}
+// ---------- découpage / taille
+function fmtOpts(){$("fmt").innerHTML=Object.keys(Chars.PRESETS).map(k=>`<option value="${k}">${Chars.PRESETS[k].label}</option>`).join("")}
+function syncCut(){const s=cur(),i=im(cs);$("fmt").value=s.format||"libre";$("fw").value=s.fw;$("fh").value=s.fh;$("co").value=s.cols;$("ro").value=s.rows;
+ $("dims").textContent=i?`Image ${i.width}×${i.height} px → ${s.cols}×${s.rows} frames de ${s.fw}×${s.fh} px`+((s.cols*s.fw!==i.width||s.rows*s.fh!==i.height)?" — ⚠ le découpage ne tombe pas pile sur l'image":""):""}
+$("fmt").onchange=e=>{const s=cur(),i=im(cs),f=e.target.value;s.format=f;if(f!=="libre"){const p=Chars.PRESETS[f];s.cols=p.cols;s.rows=p.rows;s.fw=i?Math.max(1,Math.round(i.width/p.cols)):p.fw;s.fh=i?Math.max(1,Math.round(i.height/p.rows)):p.fh}touch();syncCut();draw();syncScale()};
+[["fw","fw"],["fh","fh"],["co","cols"],["ro","rows"]].forEach(([id,k])=>$(id).onchange=e=>{const s=cur();s[k]=Math.max(1,parseInt(e.target.value)||1);s.format="libre";selF={c:0,r:0,w:1,h:1};touch();syncCut();draw();syncScale()});
+$("bFit").onclick=()=>{const s=cur(),i=im(cs);if(!i)return;s.fw=Math.max(1,Math.floor(i.width/s.cols));s.fh=Math.max(1,Math.floor(i.height/s.rows));touch();syncCut();draw();syncScale()};
+function syncScale(){const s=C;$("sc").value=C.scale||100;$("scv").textContent=(C.scale||100)+"%";$("scd").textContent=`Dans le jeu : ${Math.round(C.fw*(C.scale||100)/100)} × ${Math.round(C.fh*(C.scale||100)/100)} px par frame (taille d'origine ${C.fw}×${C.fh})`}
+$("sc").oninput=e=>{C.scale=+e.target.value;syncScale();touch()};
+// ---------- animations
+function aList(){$("aSel").innerHTML=C.anims.length?C.anims.map((a,i)=>`<option value="${i}">${a.name} (${a.frames.length})</option>`).join(""):'<option value="">— aucune animation —</option>';if(ai>=C.anims.length)ai=Math.max(0,C.anims.length-1);$("aSel").value=C.anims.length?ai:"";
+ $("aBox").hidden=!A();if(A()){const a=A();$("aName").value=a.name;$("aFps").value=a.fps;$("aFpsv").textContent=a.fps;$("aLoop").checked=!!a.loop;strip()}}
+function strip(){const a=A();$("strip").innerHTML=a.frames.length?a.frames.map((f,i)=>`<div class="fr" data-i="${i}"><canvas width="48" height="48"></canvas><div><b>${i+1}</b>${f.s!=="main"?'<span title="autre image">*</span>':""}</div><div><button data-a="l">◀</button><button data-a="r">▶</button><button data-a="f" class="${f.fx?"on":""}">↔</button><button data-a="x">✖</button></div><div>×<input type="number" min="1" max="20" value="${f.d||1}" data-a="d"></div></div>`).join(""):'<div class="hint">Aucune frame : sélectionne-en sur l\'image, puis « Ajouter ».</div>';
+ $("strip").querySelectorAll(".fr").forEach(el=>{const f=a.frames[+el.dataset.i];paintFrame(el.querySelector("canvas"),f,48)})}
+function paintFrame(c,f,size){const s=sh(f.s),i=im(f.s),x=c.getContext("2d");x.clearRect(0,0,c.width,c.height);if(!s||!i)return;x.imageSmoothingEnabled=false;
+ const k=Math.min(size/s.fw,size/s.fh),w=s.fw*k,h=s.fh*k;x.save();x.translate((c.width-w)/2+(f.fx?w:0),(c.height-h)/2);if(f.fx)x.scale(-1,1);x.drawImage(i,f.c*s.fw,f.r*s.fh,s.fw,s.fh,0,0,w,h);x.restore()}
+$("strip").onclick=e=>{const el=e.target.closest(".fr"),b=e.target.dataset.a;if(!el||!b||b==="d")return;const a=A(),i=+el.dataset.i,fr=a.frames;
+ if(b==="x")fr.splice(i,1);else if(b==="f")fr[i].fx=!fr[i].fx;else if(b==="l"&&i>0)[fr[i-1],fr[i]]=[fr[i],fr[i-1]];else if(b==="r"&&i<fr.length-1)[fr[i+1],fr[i]]=[fr[i],fr[i+1]];
+ touch();aList();draw()};
+$("strip").onchange=e=>{if(e.target.dataset.a!=="d")return;const i=+e.target.closest(".fr").dataset.i;A().frames[i].d=Math.max(1,Math.min(20,parseInt(e.target.value)||1));touch()};
+$("aSel").onchange=e=>{ai=+e.target.value;aList();draw()};
+$("aName").oninput=e=>{A().name=e.target.value;touch();const o=$("aSel").options[ai];if(o)o.textContent=`${A().name} (${A().frames.length})`};
+$("aFps").oninput=e=>{A().fps=+e.target.value;$("aFpsv").textContent=A().fps;touch()};
+$("aLoop").onchange=e=>{A().loop=e.target.checked;touch()};
+$("aNew").onclick=()=>{const n=prompt("Nom de la nouvelle animation :","Animation "+(C.anims.length+1));if(!n)return;C.anims.push({name:n.trim(),fps:8,loop:true,frames:[]});ai=C.anims.length-1;touch();aList();draw()};
+$("aDup").onclick=()=>{const a=A();if(!a)return;C.anims.push(JSON.parse(JSON.stringify({...a,name:a.name+" (copie)"})));ai=C.anims.length-1;touch();aList();draw()};
+$("aDel").onclick=()=>{const a=A();if(!a||!confirm(`Supprimer l'animation « ${a.name} » ?`))return;C.anims.splice(ai,1);touch();aList();draw()};
+$("aStd").onclick=()=>{if(!confirm("Ajouter les animations standard (marche et immobile, 4 directions) à partir de la feuille principale ?"))return;C.anims.push(...Chars.defaultAnims(C.format,C.cols,C.rows));touch();aList()};
+$("aClr").onclick=()=>{if(A()&&confirm("Vider toutes les frames de cette animation ?")){A().frames=[];touch();aList();draw()}};
+function addSel(){const a=A(),s=cur();if(!a){alert("Crée ou choisis d'abord une animation.");return}
+ for(let r=selF.r;r<selF.r+selF.h;r++)for(let c=selF.c;c<selF.c+selF.w;c++)a.frames.push({s:cs,c,r,d:1,fx:false});touch();aList();draw()}
+$("aAddSel").onclick=addSel;
+$("aAddRow").onclick=()=>{const a=A(),s=cur();if(!a){alert("Crée ou choisis d'abord une animation.");return}for(let c=0;c<s.cols;c++)a.frames.push({s:cs,c,r:selF.r,d:1,fx:false});touch();aList();draw()};
+// aperçu animé
+let pt=0,pi=0,last=0;
+function tick(ts){const dt=Math.min(.1,(ts-last)/1000||0);last=ts;const a=A(),x=pv.getContext("2d");x.clearRect(0,0,pv.width,pv.height);
+ if(a&&a.frames.length){pt+=dt;const f0=a.frames[pi%a.frames.length],dur=(f0.d||1)/Math.max(1,a.fps);if(pt>=dur){pt=0;pi++;if(pi>=a.frames.length)pi=a.loop?0:a.frames.length-1}
+  const f=a.frames[Math.min(pi,a.frames.length-1)],s=sh(f.s);if(s){const g=(C.scale||100)/100,k=Math.min(pv.width/s.fw,pv.height/s.fh,g*2);paintFrameScaled(x,f,k);
+   $("pvi").textContent=`Frame ${Math.min(pi,a.frames.length-1)+1}/${a.frames.length} — ${Math.round(s.fw*g)}×${Math.round(s.fh*g)} px dans le jeu`}}
+ else $("pvi").textContent="";requestAnimationFrame(tick)}
+function paintFrameScaled(x,f,k){const s=sh(f.s),i=im(f.s);if(!s||!i)return;x.imageSmoothingEnabled=false;const w=s.fw*k,h=s.fh*k;x.save();x.translate((pv.width-w)/2+(f.fx?w:0),(pv.height-h)/2);if(f.fx)x.scale(-1,1);x.drawImage(i,f.c*s.fw,f.r*s.fh,s.fw,s.fh,0,0,w,h);x.restore()}
+// ---------- liste des characters
+async function list(id){const l=await Chars.col().list();$("list").innerHTML=l.length?l.map(x=>`<div class="it${x.id===id?" on":""}" data-id="${x.id}">${x.name||x.id}<small>${x.id}</small></div>`).join(""):'<div class="hint">Aucun character. Clique sur « Nouveau ».</div>';return l}
+$("list").onclick=e=>{const r=e.target.closest(".it");if(r)load(r.dataset.id)};
+function sync(){if(!C)return;shList();syncCut();syncScale();aList()}
+async function load(id){if(C&&$("st").textContent.startsWith("●"))await save();
+ try{C=await Chars.col().get(id)}catch(e){msg(e.message);return}
+ C.id=id;C.sheets=C.sheets||[];C.anims=C.anims||[];C.scale=C.scale||100;C.format=C.format||"libre";cs="main";ai=0;selF={c:0,r:0,w:1,h:1};pi=0;
+ localStorage.setItem("jv_lastchar_"+Studio.project,id);await list(id);await loadImgs();sync();draw();$("st").textContent="";fitZoom()}
+function fitZoom(){const i=im("main");if(!i)return;let z=1;for(const v of [1,2,3,4,5,6,8])if(i.width*v<=700&&i.height*v<=520)z=v;setZoom(z)}
+$("bNew").onclick=async()=>{const v=await Chars.dialog({title:"Nouveau character",file:"optional"});if(!v)return;try{const id=await Chars.create(v);await load(id)}catch(e){alert(e.message)}};
+$("bRen").onclick=async()=>{if(!C)return;const n=prompt("Nouveau nom :",C.name);if(n){C.name=n.trim();await save();await list(C.id)}};
+$("bDup").onclick=async()=>{if(!C)return;try{await save();const c=JSON.parse(JSON.stringify(C));delete c.id;c.name=C.name+" (copie)";const r=await Chars.col().add(c);await load(r.id)}catch(e){alert(e.message)}};
+$("bDel").onclick=async()=>{if(!C)return;if(!confirm(`Supprimer le character « ${C.name} » ?`))return;
+ const files=[C.image,...C.sheets.map(s=>s.image)],others=[];try{(await Chars.col().getAll()).forEach(x=>{if(x&&x.id!==C.id){others.push(x.image);(x.sheets||[]).forEach(s=>others.push(s.image))}})}catch(e){}
+ const own=files.filter(f=>!others.includes(f)),rm=own.length&&confirm(`Supprimer aussi ${own.length} fichier(s) image ?`);
+ try{await Chars.col().remove(C.id);if(rm)for(const f of own)await Chars.assets().remove(f).catch(()=>{});C=null;const l=await list();if(l.length)await load(l[0].id);else{cv.width=1;cv.height=1}}catch(e){alert(e.message)}};
+window.addEventListener("beforeunload",()=>{if(C&&$("st").textContent.startsWith("●"))save()});
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");try{await Studio.ensureProject();const l=await list();
+  if(l.length)await load((l.find(x=>x.id===localStorage.getItem("jv_lastchar_"+Studio.project))||l[0]).id);else{C=null;$("info").textContent="Aucun character : clique sur « Nouveau character »."}}catch(e){msg(e.message)}}
+Studio.onProject(()=>{C=null;init()});
+fmtOpts();init();requestAnimationFrame(tick);
+</script>
+</body>
+</html>

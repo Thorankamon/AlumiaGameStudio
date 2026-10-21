@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des interrupteurs locaux</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#app{flex:1;min-height:0}
+</style>
+</head>
+<body>
+<div id="top"><b>🔹 Gestion des interrupteurs locaux</b></div>
+<div id="msg" hidden></div>
+<div id="app"></div>
+<script src="studio-api.js"></script>
+<script src="studio-chars.js"></script>
+<script src="studio-events.js"></script>
+<script src="studio-lists.js"></script>
+<script>
+const msg=x=>{const m=document.getElementById("msg");m.hidden=!x;m.textContent=x||""};
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");try{await Studio.ensureProject();await Lists.mount({el:document.getElementById("app"),doc:"interrupteurs-locaux",kind:"self",noun:"Interrupteur local",idMode:"letter",
+ hint:"Chaque event possède ses propres interrupteurs locaux (A, B, C…) : ce qui est activé sur un event n'affecte pas les autres. Donne ici un nom à chaque lettre pour t'y retrouver ; il s'affichera dans l'éditeur d'events.",
+ cols:[{k:"name",l:"Nom (sens de la lettre)",ph:"Ex : A = a déjà parlé au héros"},{k:"note",l:"Note",ph:"Remarque libre"}],
+ seed:()=>["A","B","C","D"]})}catch(e){msg(e.message)}}
+Studio.onProject(init);init();
+</script>
+</body>
+</html>

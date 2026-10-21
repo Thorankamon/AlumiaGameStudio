@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des événements communs</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+button{font:inherit;background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+#L{width:250px;background:#f8fafc;border-right:1px solid #cbd5e1;overflow:auto;padding:8px;flex-shrink:0}
+#ed{flex:1;min-width:0;padding:10px 14px;background:#fff}
+.bt{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}.bt .full{grid-column:1/3}
+.it{padding:6px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent}.it:hover{background:#e2e8f0}.it.on{background:#bfdbfe;border-color:#3b82f6}.it small{display:block;color:#64748b}
+h4{margin:12px 0 6px;font-size:13px}.hint{color:#64748b;font-size:12px}
+.warn{background:#fee2e2;color:#991b1b;border-radius:8px;padding:6px 10px;margin:4px 0}
+.calls{margin:4px 0 0 16px;color:#334155}.calls li{margin:2px 0}
+</style>
+</head>
+<body>
+<div id="top"><b>🔁 Gestion des événements communs</b><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="L">
+  <div class="bt"><button id="bNew" class="full">＋ Nouvel événement commun</button><button class="g" id="bDup">⧉ Dupliquer</button><button class="r" id="bDel">🗑 Supprimer</button></div>
+  <div class="hint">Un événement commun est une suite de commandes que tu écris <b>une seule fois</b> et que tout le jeu peut réutiliser : appelé par un event, ou lancé tout seul par un interrupteur ou une variable.</div>
+  <h4>Mes événements communs</h4><div id="list"></div>
+ </aside>
+ <section id="ed"><div class="hint">Choisis un événement commun dans la liste, ou crée-en un nouveau.</div></section>
+</div>
+<script src="studio-api.js"></script>
+<script src="studio-chars.js"></script>
+<script src="studio-events.js"></script>
+<script>
+const $=id=>document.getElementById(id),col=()=>Studio.col("evcommuns","evcommun");
+const OPS=[["=","="],[">=","≥"],["<=","≤"],[">",">"],["<","<"],["!=","≠"]];
+const DEF={mode:"call",cond:"none",sw:1,var:1,op:">=",val:0};
+const uses=c=>["switch","both"].includes(c);
+const TRIG=[
+ {h:"Déclenchement"},
+ {k:"trigger.mode",l:"Mode d'exécution",t:"sel",re:true,o:[["call","Appelé seulement (par la commande « Appeler un événement commun »)"],["auto","Automatique : démarre tout seul et fige le jeu pendant son exécution"],["parallel","Processus parallèle : tourne en arrière-plan sans bloquer le jeu"]]},
+ {k:"trigger.cond",l:"Condition de démarrage",t:"sel",re:true,show:c=>c.trigger.mode!=="call",o:[["none","Toujours"],["switch","Quand un interrupteur est activé"],["variable","Quand une variable remplit une condition"],["both","Interrupteur activé ET variable remplissant une condition"]]},
+ {k:"trigger.sw",l:"Interrupteur n°",t:"sw",show:c=>c.trigger.mode!=="call"&&uses(c.trigger.cond)},
+ {k:"trigger.var",l:"Variable n°",t:"var",show:c=>c.trigger.mode!=="call"&&["variable","both"].includes(c.trigger.cond)},
+ {k:"trigger.op",l:"La variable doit être",t:"sel",o:OPS,show:c=>c.trigger.mode!=="call"&&["variable","both"].includes(c.trigger.cond)},
+ {k:"trigger.val",l:"Valeur",t:"num",show:c=>c.trigger.mode!=="call"&&["variable","both"].includes(c.trigger.cond)}
+];
+let C=null;
+const msg=x=>{$("msg").hidden=!x;$("msg").textContent=x||""};
+const auto=Studio.autosave(()=>save(),800);
+const touch=()=>{$("st").textContent="● modifié";auto();warn()};
+async function save(){if(!C)return;try{await col().save(C.id,C);$("st").textContent="✔ enregistré "+new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"})}catch(e){$("st").textContent="⚠ "+e.message}}
+async function list(id){const l=await col().list();$("list").innerHTML=l.length?l.map(x=>`<div class="it${x.id===id?" on":""}" data-id="${x.id}">${x.name||x.id}<small>${x.id}</small></div>`).join(""):'<div class="hint">Aucun événement commun.</div>';return l}
+$("list").onclick=e=>{const r=e.target.closest(".it");if(r)load(r.dataset.id)};
+function callsSelf(l){return (l||[]).some(c=>(c.t==="common"&&c.id===C.id)||(c.t==="if"&&(callsSelf(c.then)||callsSelf(c.else)))||(c.t==="choices"&&(c.opts||[]).some(o=>callsSelf(o.cmds))))}
+function warn(){const w=document.querySelector("#ed .warn");if(!w)return;const msgs=[];
+ if(callsSelf(C.cmds))msgs.push("⚠ Cet événement commun s'appelle lui-même : attention aux boucles infinies.");
+ if(C.trigger.mode==="auto"&&C.trigger.cond==="none")msgs.push("⚠ Automatique + « Toujours » : il se relancerait sans fin et figerait le jeu. Choisis une condition, ou termine-le en désactivant l'interrupteur qui le lance.");
+ w.hidden=!msgs.length;w.innerHTML=msgs.join("<br>")}
+async function load(id){if(C&&$("st").textContent.startsWith("●"))await save();
+ try{C=await col().get(id);C.id=id}catch(e){msg(e.message);return}
+ C.trigger={...DEF,...(C.trigger||{})};C.cmds=C.cmds||[];C.note=C.note||"";
+ localStorage.setItem("jv_lastce_"+Studio.project,id);await list(id);$("st").textContent="";await render()}
+async function render(){await Events.ctxLoad(true);const ed=$("ed");
+ ed.innerHTML=`<div class="ev-ed" style="height:100%"><div class="ev-head"><label>Nom</label><input type="text" class="nm" placeholder="Nom de l'événement commun"><span class="ev-id">ID : ${C.id}</span><label>Note</label><input type="text" class="nt" placeholder="Remarque libre"></div><div class="warn" hidden></div><div class="ev-body"><div class="ev-left" id="trg"></div><div class="ev-right" id="cm"></div></div></div>`;
+ const nm=ed.querySelector(".nm"),nt=ed.querySelector(".nt");nm.value=C.name||"";nt.value=C.note||"";
+ nm.oninput=()=>{C.name=nm.value;touch();const o=document.querySelector("#list .it.on");if(o)o.firstChild.textContent=C.name||C.id};nt.oninput=()=>{C.note=nt.value;touch()};
+ const trg=$("trg");trg.appendChild(Events.form(TRIG,C,touch));
+ const hint=document.createElement("div");hint.className="hint";hint.style.marginTop="8px";hint.innerHTML="Toutes les commandes d'un event sont disponibles ici. Les commandes qui visent « cet event » (apparence, transparence, effacer, interrupteur local) s'appliquent à <b>l'event qui appelle</b> l'événement commun.";trg.appendChild(hint);
+ const by=document.createElement("div");by.innerHTML='<h5 style="margin:14px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e2e8f0">Appelé par</h5><div class="hint">Analyse…</div>';trg.appendChild(by);
+ Events.usage().then(U=>{const l=(U["common:"+C.id]||[]);by.lastChild.outerHTML=l.length?`<ul class="calls">${l.map(w=>`<li>${w.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</li>`).join("")}</ul>`:'<div class="hint">Pas encore appelé par un event.</div>'});
+ await Events.cmdEditor($("cm"),C.cmds,{onChange:touch});warn()}
+async function create(){try{const n=(await col().list()).length+1,r=await col().add({name:"Événement commun "+n,note:"",trigger:{...DEF},cmds:[]});await load(r.id)}catch(e){alert(e.message)}}
+$("bNew").onclick=create;
+$("bDup").onclick=async()=>{if(!C)return;try{await save();const c=JSON.parse(JSON.stringify(C));delete c.id;c.name=(C.name||"Événement commun")+" (copie)";const r=await col().add(c);await load(r.id)}catch(e){alert(e.message)}};
+$("bDel").onclick=async()=>{if(!C)return;let n=0;try{n=((await Events.usage())["common:"+C.id]||[]).length}catch(e){}
+ if(!confirm(`Supprimer « ${C.name||C.id} » ?`+(n?`\n\n⚠ Il est appelé ${n} fois : ces appels ne feront plus rien.`:"")))return;
+ try{await col().remove(C.id);C=null;$("ed").innerHTML='<div class="hint">Choisis un événement commun dans la liste, ou crée-en un nouveau.</div>';const l=await list();if(l.length)await load(l[0].id)}catch(e){alert(e.message)}};
+window.addEventListener("beforeunload",()=>{if(C&&$("st").textContent.startsWith("●"))save()});
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");if(!window.Events||!Events.form||!Events.usage){msg("Le fichier studio-events.js de ton dossier est une ancienne version : remplace-le par la dernière (puis recharge la page avec Ctrl+F5).");return}try{await Studio.ensureProject();const l=await list();if(l.length)await load((l.find(x=>x.id===localStorage.getItem("jv_lastce_"+Studio.project))||l[0]).id)}catch(e){msg(e.message)}}
+Studio.onProject(()=>{C=null;$("ed").innerHTML="";init()});
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+  <meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AlumiaGameStudio</title>
+<style>
+:root{--accent:#3b82f6;--side:#1e293b;--text:#f1f5f9;--op:.92}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif}
+body{background:#0f172a center/cover no-repeat fixed;display:flex}
+#side{width:62px;transition:width .25s;background:color-mix(in srgb,var(--side) calc(var(--op)*100%),transparent);color:var(--text);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;backdrop-filter:blur(8px);z-index:5}
+#side.open{width:290px}
+#head{display:flex;align-items:center;gap:10px;padding:10px 12px;height:56px;border-bottom:1px solid #ffffff22}
+#burger{background:none;border:0;color:var(--text);font-size:24px;cursor:pointer;width:38px;height:38px;border-radius:10px;flex-shrink:0}
+#burger:hover{background:#ffffff22}
+#brand{font-weight:700;font-size:18px;white-space:nowrap;opacity:0;transition:opacity .2s;cursor:pointer}
+#side.open #brand{opacity:1}
+#nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px}
+.sec{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.6;padding:12px 10px 4px;white-space:nowrap;height:30px;overflow:hidden}
+#side:not(.open) .sec{border-top:1px solid #ffffff22;margin:6px 6px 0;padding:0;font-size:0;height:6px}
+.it{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;color:var(--text);padding:0 13px;height:42px;border-radius:10px;cursor:pointer;font-size:14px;text-align:left;white-space:nowrap}
+.it:hover{background:#ffffff1f}
+.it.act{background:var(--accent);color:#fff}
+.it span:not(.ic){transition:opacity .2s;opacity:1}
+#side:not(.open) .it span:not(.ic){opacity:0;pointer-events:none}
+.ic{font-size:20px;width:24px;text-align:center;flex-shrink:0}
+main{flex:1;display:flex;flex-direction:column;padding:12px;min-width:0}
+#bar{display:flex;gap:8px;align-items:center;background:color-mix(in srgb,var(--side) 85%,transparent);color:var(--text);padding:8px 12px;border-radius:12px 12px 0 0;backdrop-filter:blur(8px)}
+#bar h2{font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bar input{padding:6px 8px;border-radius:8px;border:0;width:min(260px,30vw)}
+#bar select{padding:6px 8px;border-radius:8px;border:0;max-width:160px}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn.sec2{background:#ffffff33}
+#view{flex:1;background:#fff;border-radius:0 0 12px 12px;overflow:auto;position:relative}
+iframe{width:100%;height:100%;border:0;display:block}
+.ph{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#475569;text-align:center;padding:20px;gap:8px}
+.ph .big{font-size:60px}
+.panel{max-width:560px;margin:0 auto;padding:24px;color:#1e293b}
+.panel h3{margin:18px 0 4px}
+.panel .desc{color:#64748b;font-size:13px;margin-bottom:8px}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.row label{flex:1}
+.panel input[type=text]{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px}
+.hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px}
+.clock{font-size:34px;font-weight:300}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;cursor:pointer;font-size:14px;color:#1e293b;text-align:center;transition:.15s}
+.tile:hover{transform:translateY(-3px);box-shadow:0 6px 16px #0002;border-color:var(--accent)}
+.tile .ic{font-size:34px;width:auto}
+/* ===== Thème Office 2007 (glass bleuté) ===== */
+body.t07{background-color:#9dbbe3;--gl:linear-gradient(180deg,color-mix(in srgb,var(--side) 30%,#fff),color-mix(in srgb,var(--side) 65%,#fff) 50%,var(--side) 50%,color-mix(in srgb,var(--side) 75%,#fff));--gold:linear-gradient(180deg,color-mix(in srgb,var(--accent) 35%,#fff),color-mix(in srgb,var(--accent) 70%,#fff) 50%,var(--accent) 50%,color-mix(in srgb,var(--accent) 70%,#fff))}
+.t07 #side{background:linear-gradient(180deg,color-mix(in srgb,color-mix(in srgb,var(--side) 40%,#fff) calc(var(--op)*100%),transparent),color-mix(in srgb,var(--side) calc(var(--op)*100%),transparent));border-right:1px solid #7ea4d8;box-shadow:2px 0 8px #0003}
+.t07 #head,.t07 #bar{background:var(--gl);border-color:#7ea4d8;color:var(--text)}
+.t07 #head{border-bottom:1px solid #7ea4d8}
+.t07 #bar{border:1px solid #7ea4d8;border-bottom:0;box-shadow:inset 0 1px 0 #fffc}
+.t07 #burger:hover{background:#ffffffaa}
+.t07 .sec{border-color:#7ea4d8}
+.t07 .it:hover{background:var(--gold);box-shadow:inset 0 0 0 1px #d9b24a;opacity:.85}
+.t07 .it.act{background:var(--gold);box-shadow:inset 0 0 0 1px #c99a2e,inset 0 1px 0 #fff9;color:var(--text);font-weight:600}
+.t07 .btn,.t07 .btn.sec2{background:var(--gl);color:var(--text);border:1px solid #7ea4d8;box-shadow:inset 0 1px 0 #fffc}
+.t07 .btn:hover{background:var(--gold);border-color:#c99a2e}
+.t07 #view{border:1px solid #7ea4d8;border-top:0}
+.t07 .tile{background:linear-gradient(#fff,#e6effb)}
+.t07 .tile:hover{background:var(--gold)}
+</style>
+</head>
+<body>
+<nav id="side">
+  <div id="head"><button id="burger" title="Ouvrir / fermer le menu">☰</button><span id="brand">AlumiaGameStudio</span></div>
+  <div id="nav"></div>
+</nav>
+<main>
+  <div id="bar"><h2 id="title"></h2><select id="proj" title="Projet de jeu en cours"></select><button class="btn sec2" id="newproj" title="Nouveau projet de jeu">＋</button><input id="path" type="text" placeholder="nom-du-fichier.html"><button class="btn sec2" id="pick" title="Choisir un fichier HTML">📂 Parcourir</button><input type="file" id="pickf" accept=".html,.htm" hidden><button class="btn" id="save">Lier</button><button class="btn sec2" id="ext" title="Ouvrir dans un nouvel onglet">↗</button></div>
+  <div id="view"></div>
+</main>
+<script src="studio-api.js"></script>
+<script>
+// ====== Modules : id, icône, nom, fichier par défaut (modifiable avec « Lier ») ======
+// {sec:"Titre", d:"description"} = nouvelle catégorie
+const MENU=[
+ {id:"home",ic:"🏠",n:"Accueil",builtin:true},
+
+ {sec:"🗺️ 1. Cartographie et environnement",d:"Création et gestion des cartes du jeu."},
+ {id:"maps",ic:"🗺️",n:"Gestion des MAP",url:"jv-maps.html"},
+ {id:"tsedit",ic:"🖌️",n:"Édition des Tilesets",url:"jv-tileset-edition.html"},
+ {id:"tsgest",ic:"🧱",n:"Gestion des Tilesets",url:"jv-tileset-gestion.html"},
+ {id:"meteo",ic:"🌦️",n:"Gestion de la météo",url:"jv-meteo.html"},
+
+ {sec:"🧍 2. Personnages et ressources graphiques",d:"Personnages et éléments visuels du jeu."},
+ {id:"chedit",ic:"🧍",n:"Édition des Characters",url:"jv-characters-edition.html"},
+ {id:"chgest",ic:"👥",n:"Gestion des Characters",url:"jv-characters-gestion.html"},
+ {id:"images",ic:"🖼️",n:"Gestion des images",url:"jv-images.html"},
+ {id:"effets",ic:"✨",n:"Gestion des effets",url:"jv-effets.html"},
+
+ {sec:"⚙️ 3. Événements et interactions",d:"Interactions, actions et événements du jeu."},
+ {id:"events",ic:"⚙️",n:"Gestion des Events",url:"jv-events.html"},
+ {id:"evenements",ic:"🎬",n:"Gestion des événements",url:"jv-evenements.html"},
+ {id:"evcommuns",ic:"🔁",n:"Gestion des événements communs",url:"jv-evenements-communs.html"},
+
+ {sec:"💬 4. Dialogues et communication",d:"Messages affichés au joueur."},
+ {id:"messages",ic:"💬",n:"Gestion des messages",url:"jv-messages.html"},
+
+ {sec:"🔀 5. Logique et conditions",d:"Conditions, déclencheurs et mécanismes du jeu."},
+ {id:"switch",ic:"🔘",n:"Gestion des interrupteurs",url:"jv-interrupteurs.html"},
+ {id:"switchl",ic:"🔹",n:"Gestion des interrupteurs locaux",url:"jv-interrupteurs-locaux.html"},
+ {id:"vars",ic:"🔢",n:"Gestion des variables",url:"jv-variables.html"},
+
+ {sec:"⏱️ 6. Temps et chronométrage",d:"Gestion du temps dans le jeu."},
+ {id:"chrono",ic:"⏱️",n:"Gestion des chronomètres",url:"jv-chronometres.html"},
+
+ {sec:"🗄️ 7. Base de données et configuration",d:"Données générales et paramètres du jeu."},
+ {id:"bdd",ic:"🗄️",n:"Gestion de la base de données",url:"jv-base-de-donnees.html"},
+
+ {sec:"➕ 8. Suggestions (outils utiles en plus)",d:"Compléments souvent indispensables dans un éditeur de jeux."},
+ {id:"projets",ic:"📁",n:"Gestion de projets",url:"jv-projets.html"},
+ {id:"audio",ic:"🎵",n:"Gestion des musiques et sons",url:"jv-audio.html"},
+ {id:"anim",ic:"🎞️",n:"Gestion des animations",url:"jv-animations.html"},
+ {id:"objets",ic:"🎒",n:"Objets, armes et équipements",url:"jv-objets.html"},
+ {id:"ennemis",ic:"👾",n:"Ennemis et groupes de combat",url:"jv-ennemis.html"},
+ {id:"quetes",ic:"📜",n:"Quêtes et journal",url:"jv-quetes.html"},
+ {id:"sauv",ic:"💾",n:"Sauvegardes et chargement",url:"jv-sauvegardes.html"},
+ {id:"scripts",ic:"🧩",n:"Scripts et plugins",url:"jv-scripts.html"},
+ {id:"retouche",ic:"🎨",n:"Retouche d'images",url:"jv-retouche.html"},
+ {id:"test",ic:"▶️",n:"Tester le jeu",url:"jv-test.html"},
+ {id:"export",ic:"📦",n:"Exporter le jeu",url:"jv-export.html"},
+
+ {sec:"🧊 9. 3D",d:"Tout ce qui concerne la création en trois dimensions."},
+ {id:"d3scenes",ic:"🏞️",n:"Gestion des scènes 3D",url:"jv-3d-scenes.html"},
+ {id:"d3modeles",ic:"🧊",n:"Gestion des modèles 3D",url:"jv-3d-modeles.html"},
+ {id:"d3textures",ic:"🎭",n:"Textures et matériaux",url:"jv-3d-textures.html"},
+ {id:"d3terrain",ic:"⛰️",n:"Éditeur de terrain",url:"jv-3d-terrain.html"},
+ {id:"d3lum",ic:"💡",n:"Éclairage et ombres",url:"jv-3d-lumieres.html"},
+ {id:"d3cam",ic:"🎥",n:"Caméras",url:"jv-3d-cameras.html"},
+ {id:"d3anim",ic:"🏃",n:"Animations 3D (squelettes)",url:"jv-3d-animations.html"},
+ {id:"d3col",ic:"🧱",n:"Collisions et physique",url:"jv-3d-physique.html"},
+ {id:"d3fx",ic:"🔥",n:"Particules et effets 3D",url:"jv-3d-particules.html"},
+ {id:"d3ciel",ic:"🌌",n:"Ciel, brouillard et environnement",url:"jv-3d-ciel.html"},
+
+ {sec:"Réglages"},
+ {id:"params",ic:"🎛️",n:"Personnalisation",builtin:true}
+];
+const KEY="alumiaGameStudio_v1";
+let S={accent:"#3b82f6",side:"#1e293b",text:"#f1f5f9",op:.92,bg:"",name:"AlumiaGameStudio",urls:{},open:false,cur:"home",theme:"dark"};
+try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){}
+const $=id=>document.getElementById(id);
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert("Stockage plein : l'image de fond est peut-être trop lourde. Utilise plutôt un lien ou une image plus petite.")}}
+function apply(){
+ const r=document.documentElement.style;
+ r.setProperty("--accent",S.accent);r.setProperty("--side",S.side);r.setProperty("--text",S.text);r.setProperty("--op",S.op);
+ document.body.style.backgroundImage=S.bg?`url("${S.bg}")`:"none";
+ $("brand").textContent=S.name;document.title=S.name;
+ $("side").classList.toggle("open",S.open);
+ document.body.classList.toggle("t07",S.theme==="t07");
+}
+function build(){
+ $("nav").innerHTML="";
+ MENU.forEach(m=>{
+  if(m.sec){const d=document.createElement("div");d.className="sec";d.textContent=m.sec;d.title=m.sec;$("nav").append(d);return}
+  const b=document.createElement("button");b.className="it"+(m.id===S.cur?" act":"");b.title=m.n;
+  b.innerHTML=`<span class="ic">${m.ic}</span><span>${m.n}</span>`;
+  b.onclick=()=>{S.cur=m.id;save();build();show()};
+  $("nav").append(b);
+ });
+}
+function url(m){return S.urls[m.id]!==undefined?S.urls[m.id]:(m.url||"")}
+function show(){
+ let m=MENU.find(x=>x.id===S.cur);if(!m){S.cur="home";m=MENU[0]}
+ const v=$("view");
+ $("title").textContent=m.ic+"  "+m.n;
+ const isB=!!m.builtin;
+ $("path").style.display=$("save").style.display=$("ext").style.display=$("pick").style.display=isB?"none":"";
+ if(isB){m.id==="home"?home():settings();return}
+ const u=url(m);$("path").value=u;
+ if(u){v.innerHTML=`<iframe src="${u}" allow="camera; clipboard-write"></iframe>`}
+ else v.innerHTML=`<div class="ph"><div class="big">${m.ic}</div><h2>${m.n}</h2><p>Aucun fichier lié pour l'instant.<br>Tape le nom de ton fichier HTML en haut puis clique sur « Lier ».</p></div>`;
+}
+function go(id){S.cur=id;save();build();show()}
+let tmr;
+function home(){
+ let out="",op=false;
+ MENU.forEach(m=>{
+  if(m.sec){if(op)out+="</div>";out+=`<h3>${m.sec}</h3>${m.d?`<div class="desc">${m.d}</div>`:""}<div class="tiles">`;op=true}
+  else if(m.id!=="home"&&!m.builtin)out+=`<div class="tile" data-id="${m.id}"><span class="ic">${m.ic}</span>${m.n}</div>`;
+ });
+ if(op)out+="</div>";
+ $("view").innerHTML=`<div class="panel" style="max-width:none"><div class="hero"><div><h2>Tableau de bord — ${S.name}</h2><div id="dt" style="color:#64748b"></div></div><div class="clock" id="clk"></div></div>${out}</div>`;
+ document.querySelectorAll(".tile").forEach(t=>t.onclick=()=>go(t.dataset.id));
+ clearInterval(tmr);
+ const tick=()=>{if(!$("clk")){clearInterval(tmr);return}const d=new Date();$("clk").textContent=d.toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"});$("dt").textContent=d.toLocaleDateString("fr-BE",{weekday:"long",day:"numeric",month:"long",year:"numeric"})};
+ tick();tmr=setInterval(tick,1000);
+}
+const PRE={dark:{theme:"dark",side:"#1e293b",accent:"#3b82f6",text:"#f1f5f9",op:.92},t07:{theme:"t07",side:"#bcd3f0",accent:"#ffc83d",text:"#15428b",op:.96}};
+function settings(){
+ $("view").innerHTML=`<div class="panel"><h2>Personnalisation</h2>
+ <h3>Thème</h3>
+ <div class="row"><button class="btn" id="th_dark">🌙 Sombre</button><button class="btn" id="th_07">🪟 Office 2007 (bleu glass)</button></div>
+ <div class="row"><label>Nom affiché</label><input type="text" id="s_name" value="${S.name}"></div>
+ <h3>Couleurs</h3>
+ <div class="row"><label>Couleur du menu</label><input type="color" id="s_side" value="${S.side}"></div>
+ <div class="row"><label>Couleur d'accent (élément actif, boutons)</label><input type="color" id="s_accent" value="${S.accent}"></div>
+ <div class="row"><label>Couleur du texte</label><input type="color" id="s_text" value="${S.text}"></div>
+ <div class="row"><label>Opacité du menu</label><input type="range" id="s_op" min=".3" max="1" step=".02" value="${S.op}"></div>
+ <h3>Image de fond</h3>
+ <div class="row"><input type="file" id="s_file" accept="image/*"></div>
+ <div class="row"><input type="text" id="s_bg" style="flex:1" placeholder="ou lien d'image (https://… ou fichier.jpg)" value="${S.bg.startsWith('data:')?'':S.bg}"><button class="btn" id="s_bgok">OK</button></div>
+ <div class="row"><button class="btn sec2" style="background:#e2e8f0;color:#1e293b" id="s_nobg">Retirer l'image</button><button class="btn" style="background:#ef4444" id="s_reset">Tout réinitialiser</button></div>
+ <p style="margin-top:14px;color:#64748b;font-size:13px">Les réglages et les fichiers liés sont enregistrés automatiquement dans ce navigateur.</p></div>`;
+ $("th_dark").onclick=()=>{Object.assign(S,PRE.dark);apply();save();settings()};
+ $("th_07").onclick=()=>{Object.assign(S,PRE.t07);apply();save();settings()};
+ const bind=(id,k,f=v=>v)=>$(id).oninput=e=>{S[k]=f(e.target.value);apply();save()};
+ bind("s_name","name");bind("s_side","side");bind("s_accent","accent");bind("s_text","text");bind("s_op","op",parseFloat);
+ $("s_bgok").onclick=()=>{S.bg=$("s_bg").value.trim();apply();save()};
+ $("s_nobg").onclick=()=>{S.bg="";apply();save();settings()};
+ $("s_file").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{S.bg=r.result;apply();save()};r.readAsDataURL(f)};
+ $("s_reset").onclick=()=>{if(confirm("Réinitialiser tous les réglages ?")){localStorage.removeItem(KEY);location.reload()}};
+}
+$("burger").onclick=()=>{S.open=!S.open;apply();save()};
+$("save").onclick=()=>{S.urls[S.cur]=$("path").value.trim();save();show()};
+$("path").onkeydown=e=>{if(e.key==="Enter")$("save").click()};
+$("ext").onclick=()=>{const u=$("path").value.trim();if(u)window.open(u,"_blank")};
+$("pick").onclick=()=>$("pickf").click();
+$("pickf").onchange=e=>{const f=e.target.files[0];if(f){$("path").value=f.name;$("save").click()}e.target.value=""};
+$("brand").onclick=()=>go("home");
+async function loadProjects(){const sel=$("proj");try{const L=await Studio.projects();sel.innerHTML=L.map(n=>`<option>${n}</option>`).join("");if(L.length&&!L.includes(Studio.project))Studio.setProject(L[0]);sel.value=Studio.project}catch(e){sel.innerHTML='<option>⚠ serveur éteint</option>'}}
+$("proj").onchange=e=>Studio.setProject(e.target.value);
+$("newproj").onclick=async()=>{const n=prompt("Nom du nouveau projet de jeu :");if(!n)return;try{await Studio.createProject(n.trim());await loadProjects()}catch(e){alert(e.message)}};
+Studio.onProject(loadProjects);apply();build();show();loadProjects();
+</script>
+</body>
+</html>

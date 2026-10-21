@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des Tilesets</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top,#tools{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+#tools{background:#334155;font-size:12px}
+button,select,input{font:inherit}
+button{background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}button:disabled{opacity:.4;cursor:default}
+select,input[type=text],input[type=number]{padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#1e293b}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+aside{background:#f8fafc;overflow:auto;padding:8px;flex-shrink:0}
+#L{width:230px;border-right:1px solid #cbd5e1}#R{width:300px;border-left:1px solid #cbd5e1}
+#C{flex:1;display:flex;flex-direction:column;min-width:0}
+#cvWrap{flex:1;overflow:auto;background:#94a3b8}
+#cv{display:block;image-rendering:pixelated;background:repeating-conic-gradient(#e2e8f0 0 25%,#fff 0 50%) 0 0/16px 16px}
+h4{margin:12px 0 6px;font-size:13px}h4:first-child{margin-top:0}
+.bt{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}.bt button:first-child{grid-column:1/3}
+.it{padding:6px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent}.it:hover{background:#e2e8f0}.it.on{background:#bfdbfe;border-color:#3b82f6}.it small{color:#64748b;display:block}
+.f{display:flex;align-items:center;gap:6px;margin:4px 0}.f label{flex:1}
+.f input[type=range]{flex:1.4}.f span{width:40px;text-align:right;color:#64748b}
+.opt{display:block;margin:3px 0;cursor:pointer}
+.sides{display:grid;grid-template-columns:repeat(2,1fr);gap:2px 8px;margin:2px 0 6px 20px;color:#475569}
+.pre{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.pre button{background:#e2e8f0;color:#1e293b;padding:3px 8px}
+.hint,#info{color:#64748b;font-size:12px}#info{background:#f1f5f9;padding:4px 10px}
+#modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:9}
+#modal[hidden]{display:none}#box{background:#fff;border-radius:12px;padding:18px;width:360px}
+#box h3{margin-bottom:10px}#box .f input[type=text],#box .f select{flex:1.4}
+</style>
+</head>
+<body>
+<div id="top"><b>🧱 Gestion des Tilesets</b><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="L">
+  <div class="bt"><button id="bNew">＋ Nouveau (importer une image)</button><button class="g" id="bRen">✏️ Renommer</button><button class="g" id="bDup">⧉ Dupliquer</button><button class="g" id="bRep" style="grid-column:1/3">🖼 Remplacer l'image</button><button class="r" id="bDel" style="grid-column:1/3">🗑 Supprimer</button></div>
+  <h4>Mes tilesets</h4><div id="list"></div>
+ </aside>
+ <section id="C">
+  <div id="tools">
+   <label><input type="checkbox" id="vPass" checked> Voir le passage</label><label><input type="checkbox" id="vPri" checked> Voir la priorité</label>
+   <label><input type="checkbox" id="pv" checked> Aperçu avec les couleurs</label>
+   <button class="g" id="zOut">−</button><span id="zv">100%</span><button class="g" id="zIn">＋</button><button class="g" id="bAll">Tout sélectionner</button>
+  </div>
+  <div id="cvWrap"><canvas id="cv"></canvas></div><div id="info">Choisis ou importe un tileset.</div>
+ </section>
+ <aside id="R">
+  <h4>Tuiles sélectionnées : <span id="selN">0</span></h4>
+  <div class="hint" style="margin-bottom:4px">Clique ou glisse sur le tileset pour sélectionner, puis règle :</div>
+  <b>Passage</b>
+  <label class="opt"><input type="radio" name="pass" value="free"> ✅ Passable</label>
+  <label class="opt"><input type="radio" name="pass" value="block"> ⛔ Bloqué</label>
+  <label class="opt"><input type="radio" name="pass" value="sides"> ↔ Bloqué seulement de certains côtés</label>
+  <div class="sides"><label><input type="checkbox" data-bit="1"> ⬆ haut</label><label><input type="checkbox" data-bit="2"> ➡ droite</label><label><input type="checkbox" data-bit="4"> ⬇ bas</label><label><input type="checkbox" data-bit="8"> ⬅ gauche</label></div>
+  <b>Affichage par rapport au héros</b>
+  <label class="opt"><input type="radio" name="pri" value="0"> ⬇ Sous le héros</label>
+  <label class="opt"><input type="radio" name="pri" value="1"> ⬆ Au-dessus du héros</label>
+  <label class="opt"><input type="radio" name="pri" value="2"> ⏫ Au-dessus de tout (niveau supplémentaire)</label>
+  <h4>Tuiles</h4>
+  <div class="f"><label>Taille d'une tuile</label><select id="sz"><option value="32">32 × 32</option><option value="48">48 × 48</option><option value="c">Personnalisée</option></select></div>
+  <div class="f" id="szcRow"><label>Taille (px)</label><input type="number" id="szc" min="8" max="256" style="width:80px"></div>
+  <div class="hint" id="dims"></div>
+  <h4>Couleurs et ambiance</h4>
+  <div class="pre" id="pre"></div>
+  <div class="f"><label>Luminosité</label><input type="range" id="tb" min="0" max="200"><span></span></div>
+  <div class="f"><label>Contraste</label><input type="range" id="tc" min="0" max="200"><span></span></div>
+  <div class="f"><label>Saturation</label><input type="range" id="ts" min="0" max="200"><span></span></div>
+  <div class="f"><label>Teinte</label><input type="range" id="th" min="-180" max="180"><span></span></div>
+  <div class="f"><label>Sépia</label><input type="range" id="tsep" min="0" max="100"><span></span></div>
+  <div class="f"><label>Couleur ajoutée</label><input type="color" id="tcol"><input type="range" id="top" min="0" max="100" title="Intensité"><span></span></div>
+  <div class="hint">L'effet est enregistré avec le tileset et appliqué dans Gestion des MAP.</div>
+ </aside>
+</div>
+<div id="modal" hidden><div id="box"><h3>Nouveau tileset</h3>
+ <div class="f"><label>Image</label><input type="file" id="nFile" accept="image/*"></div>
+ <div class="f"><label>Nom</label><input type="text" id="nName"></div>
+ <div class="f"><label>Taille d'une tuile</label><select id="nSz"><option value="32">32 × 32</option><option value="48">48 × 48</option><option value="c">Personnalisée</option></select></div>
+ <div class="f" id="nCRow" hidden><label>Taille (px)</label><input type="number" id="nSzc" min="8" max="256" value="32" style="width:80px"></div>
+ <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="g" id="nNo">Annuler</button><button id="nOk">Créer</button></div></div></div>
+<script src="studio-api.js"></script>
+<script>
+const $=id=>document.getElementById(id),cv=$("cv");
+const col=()=>Studio.col("tilesets","tileset"),AS=()=>Studio.assets("tilesets");
+const DEF={b:100,c:100,s:100,h:0,sep:0,col:"#0b1e5a",op:0};
+const PRE={"☀️ Normal":{},"🌙 Nuit":{b:55,c:105,s:70,col:"#0b1e5a",op:45},"🌆 Crépuscule":{b:88,s:120,col:"#ff7a1a",op:25},"🌅 Aube":{b:105,s:90,col:"#ffb6c1",op:20},"📜 Sépia":{sep:100},"⚫ Noir et blanc":{s:0},"🕳 Grotte":{b:60,s:60,col:"#1a3a2a",op:35},"🌫 Brume":{b:110,c:85,col:"#cfd8dc",op:35}};
+let T=null,im=null,sel={x:0,y:0,w:1,h:1},zoom=1,tintC=null,tintK="",drag=null;
+const ready=()=>T&&im&&im.width;
+const msg=t=>{$("msg").hidden=!t;$("msg").textContent=t||""};
+const auto=Studio.autosave(()=>save(),1000);
+const touch=()=>{$("st").textContent="● modifié";auto()};
+async function save(){if(!T)return;try{await col().save(T.id,T);$("st").textContent="✔ enregistré "+new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"})}catch(e){$("st").textContent="⚠ "+e.message}}
+const cols=()=>Math.floor(im.width/T.tileSize),rows=()=>Math.floor(im.height/T.tileSize);
+function srcImg(){if(!$("pv").checked)return im;const k=JSON.stringify(T.tint);if(!tintC||k!==tintK){tintC=Studio.tintImage(im,T.tint);tintK=k}return tintC}
+// ---------- affichage
+function draw(){const c=cv.getContext("2d");
+ if(!ready()){cv.width=1;cv.height=1;return}
+ const t=T.tileSize,W=im.width,H=im.height,C=cols(),R=rows();cv.width=W*zoom;cv.height=H*zoom;
+ c.setTransform(zoom,0,0,zoom,0,0);c.imageSmoothingEnabled=false;c.drawImage(srcImg(),0,0);
+ c.strokeStyle="rgba(0,0,0,.28)";c.lineWidth=1/zoom;c.beginPath();
+ for(let x=0;x<=C;x++){c.moveTo(x*t,0);c.lineTo(x*t,R*t)}for(let y=0;y<=R;y++){c.moveTo(0,y*t);c.lineTo(C*t,y*t)}c.stroke();
+ const vp=$("vPass").checked,vr=$("vPri").checked;c.textAlign="center";c.textBaseline="middle";c.font="bold "+Math.max(10,t*.4)+"px sans-serif";
+ for(const k in T.props){const i=+k,p=T.props[k],x=(i%C)*t,y=((i/C)|0)*t;
+  if(vp&&p.b){c.fillStyle="rgba(239,68,68,.38)";c.fillRect(x,y,t,t);c.strokeStyle="#dc2626";c.lineWidth=2/zoom;c.beginPath();c.moveTo(x+4,y+4);c.lineTo(x+t-4,y+t-4);c.moveTo(x+t-4,y+4);c.lineTo(x+4,y+t-4);c.stroke()}
+  if(vp&&p.dm){c.fillStyle="#dc2626";const b=Math.max(3,t*.16);if(p.dm&1)c.fillRect(x,y,t,b);if(p.dm&2)c.fillRect(x+t-b,y,b,t);if(p.dm&4)c.fillRect(x,y+t-b,t,b);if(p.dm&8)c.fillRect(x,y,b,t)}
+  if(vr&&p.pr){c.fillStyle=p.pr===2?"#7c3aed":"#2563eb";const w=t*.5,h=t*.32;c.fillRect(x+t-w,y+t-h,w,h);c.fillStyle="#fff";c.fillText(p.pr===2?"▲▲":"▲",x+t-w/2,y+t-h/2)}}
+ c.fillStyle="rgba(251,191,36,.35)";c.fillRect(sel.x*t,sel.y*t,sel.w*t,sel.h*t);c.strokeStyle="#f59e0b";c.lineWidth=2/zoom;c.strokeRect(sel.x*t,sel.y*t,sel.w*t,sel.h*t)}
+function cellAt(e){const r=cv.getBoundingClientRect(),t=T.tileSize;return{x:Math.max(0,Math.min(cols()-1,Math.floor((e.clientX-r.left)/zoom/t))),y:Math.max(0,Math.min(rows()-1,Math.floor((e.clientY-r.top)/zoom/t)))}}
+function setSel(a,b){sel={x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Math.abs(a.x-b.x)+1,h:Math.abs(a.y-b.y)+1};sync();draw()}
+cv.onpointerdown=e=>{if(!ready()||e.button)return;cv.setPointerCapture(e.pointerId);drag=cellAt(e);setSel(drag,drag)};
+cv.onpointermove=e=>{if(!ready())return;const p=cellAt(e);if(drag)setSel(drag,p);$("info").textContent=`Tuile n°${p.y*cols()+p.x+1} (colonne ${p.x}, ligne ${p.y})`};
+cv.onpointerup=()=>drag=null;
+$("bAll").onclick=()=>{if(ready()){sel={x:0,y:0,w:cols(),h:rows()};sync();draw()}};
+const setZoom=z=>{zoom=Math.max(.25,Math.min(4,z));$("zv").textContent=Math.round(zoom*100)+"%";draw()};
+$("zIn").onclick=()=>setZoom(zoom+.25);$("zOut").onclick=()=>setZoom(zoom-.25);
+$("cvWrap").addEventListener("wheel",e=>{if(e.ctrlKey){e.preventDefault();setZoom(zoom+(e.deltaY<0?.25:-.25))}},{passive:false});
+["vPass","vPri","pv"].forEach(i=>$(i).onchange=draw);
+// ---------- propriétés des tuiles sélectionnées
+function idxs(){const C=cols(),a=[];for(let y=sel.y;y<sel.y+sel.h;y++)for(let x=sel.x;x<sel.x+sel.w;x++)a.push(y*C+x);return a}
+function common(f){const a=idxs().map(i=>f(T.props[i]||{}));return a.every(v=>v===a[0])?a[0]:null}
+function apply(fn){idxs().forEach(i=>{const p={...(T.props[i]||{})};fn(p);if(!p.b)delete p.b;if(!p.dm)delete p.dm;if(!p.pr)delete p.pr;if(Object.keys(p).length)T.props[i]=p;else delete T.props[i]});touch();draw();sync()}
+document.querySelectorAll('[name=pass]').forEach(r=>r.onchange=()=>{if(!ready())return;const v=r.value;apply(p=>{if(v==="free"){p.b=0;p.dm=0}else if(v==="block"){p.b=1;p.dm=0}else p.b=0})});
+document.querySelectorAll('[data-bit]').forEach(b=>b.onchange=()=>{if(!ready())return;const bit=+b.dataset.bit;apply(p=>{p.b=0;p.dm=b.checked?(p.dm||0)|bit:(p.dm||0)&~bit})});
+document.querySelectorAll('[name=pri]').forEach(r=>r.onchange=()=>{if(ready())apply(p=>p.pr=+r.value)});
+function sync(){const ok=!!ready();$("selN").textContent=ok?sel.w*sel.h:0;
+ document.querySelectorAll("#R input[name],#R [data-bit]").forEach(i=>i.disabled=!ok);if(!ok)return;
+ const m=common(p=>p.b?"block":(p.dm?"sides":"free"));document.querySelectorAll('[name=pass]').forEach(r=>r.checked=r.value===m);
+ document.querySelectorAll('[data-bit]').forEach(b=>{const v=common(p=>!!((p.dm||0)&+b.dataset.bit));b.checked=!!v;b.indeterminate=v===null});
+ const pr=common(p=>String(p.pr||0));document.querySelectorAll('[name=pri]').forEach(r=>r.checked=r.value===pr)}
+// ---------- taille des tuiles / dimensions
+function syncSize(){if(!T)return;const s=T.tileSize,std=s===32||s===48;$("sz").value=std?String(s):"c";$("szcRow").hidden=std;$("szc").value=s;
+ if(ready()){const C=cols(),R=rows(),lx=im.width-C*s,ly=im.height-R*s;$("dims").textContent=`Image ${im.width}×${im.height}px → ${C}×${R} tuiles (${C*R})`+(lx||ly?` — ⚠ l'image n'est pas un multiple de ${s}px (${lx}px et ${ly}px ignorés)`:"")}}
+function setTileSize(v){v=Math.max(8,Math.min(256,parseInt(v)||32));if(v===T.tileSize)return;
+ if(Object.keys(T.props).length&&!confirm("Changer la taille décale les numéros de tuiles : les réglages de passage/priorité et les maps déjà dessinées risquent de ne plus correspondre. Continuer ?")){syncSize();return}
+ T.tileSize=v;sel={x:0,y:0,w:1,h:1};touch();syncSize();sync();draw()}
+$("sz").onchange=e=>e.target.value==="c"?($("szcRow").hidden=false):setTileSize(e.target.value);
+$("szc").onchange=e=>setTileSize(e.target.value);
+// ---------- couleurs
+const TK={tb:"b",tc:"c",ts:"s",th:"h",tsep:"sep",top:"op"};
+function syncTint(){if(!T)return;const t=T.tint;for(const id in TK){$(id).value=t[TK[id]];$(id).nextElementSibling&&$(id).nextElementSibling.tagName==="SPAN"&&($(id).nextElementSibling.textContent=t[TK[id]])}$("tcol").value=t.col;$("top").parentNode.querySelector("span").textContent=t.op}
+for(const id in TK)$(id).oninput=e=>{if(!T)return;T.tint[TK[id]]=+e.target.value;syncTint();tintC=null;touch();draw()};
+$("tcol").oninput=e=>{if(!T)return;T.tint.col=e.target.value;tintC=null;touch();draw()};
+$("pre").innerHTML=Object.keys(PRE).map(n=>`<button data-n="${n}">${n}</button>`).join("");
+$("pre").onclick=e=>{const n=e.target.dataset.n;if(!n||!T)return;T.tint={...DEF,...PRE[n]};tintC=null;syncTint();touch();draw()};
+// ---------- liste et gestion
+async function list(selId){const l=await col().list();$("list").innerHTML=l.length?l.map(x=>`<div class="it${x.id===selId?" on":""}" data-id="${x.id}">${x.name||x.id}<small>${x.id}</small></div>`).join(""):'<div class="hint">Aucun tileset. Clique sur « Nouveau ».</div>';return l}
+$("list").onclick=e=>{const r=e.target.closest(".it");if(r)load(r.dataset.id)};
+async function load(id){if(T&&$("st").textContent.startsWith("●"))await save();
+ try{T=await col().get(id)}catch(e){msg(e.message);return}
+ T.id=id;T.tileSize=T.tileSize||32;T.props=T.props||{};T.tint={...DEF,...(T.tint||{})};im=null;tintC=null;sel={x:0,y:0,w:1,h:1};
+ localStorage.setItem("jv_lastts_"+Studio.project,id);await list(id);$("st").textContent="";syncTint();syncSize();sync();draw();
+ const i=new Image();i.onload=()=>{im=i;sync();syncSize();draw()};i.onerror=()=>msg("Image introuvable : "+T.image);i.src=AS().url(T.image)}
+function show(on){$("modal").hidden=!on}
+$("bNew").onclick=()=>{$("nFile").value="";$("nName").value="";show(true)};
+$("nNo").onclick=()=>show(false);
+$("nSz").onchange=e=>$("nCRow").hidden=e.target.value!=="c";
+$("nFile").onchange=e=>{const f=e.target.files[0];if(f&&!$("nName").value)$("nName").value=f.name.replace(/\.[^.]+$/,"")};
+$("nOk").onclick=async()=>{const f=$("nFile").files[0],name=$("nName").value.trim();if(!f||!name){alert("Choisis une image et un nom.");return}
+ const s=$("nSz").value==="c"?(parseInt($("nSzc").value)||32):+$("nSz").value;
+ try{const up=await AS().upload(f),r=await col().add({name,image:up.name,tileSize:s,props:{},tint:{...DEF}});show(false);await load(r.id)}catch(e){alert(e.message)}};
+$("bRen").onclick=async()=>{if(!T)return;const n=prompt("Nouveau nom du tileset :",T.name);if(n){T.name=n.trim();await save();await list(T.id)}};
+$("bDup").onclick=async()=>{if(!T)return;try{await save();const c=JSON.parse(JSON.stringify(T));delete c.id;c.name=T.name+" (copie)";const r=await col().add(c);await load(r.id)}catch(e){alert(e.message)}};
+$("bRep").onclick=()=>{if(!T)return;const i=document.createElement("input");i.type="file";i.accept="image/*";
+ i.onchange=async()=>{const f=i.files[0];if(!f)return;try{const up=await AS().upload(f);T.image=up.name;await save();await load(T.id)}catch(e){alert(e.message)}};i.click()};
+$("bDel").onclick=async()=>{if(!T)return;let use=0,others=0;
+ try{(await Studio.col("maps","map").getAll()).forEach(m=>{if(m&&m.tilesetId===T.id)use++})}catch(e){}
+ try{others=(await col().getAll()).filter(x=>x.image===T.image&&x.id!==T.id).length}catch(e){}
+ if(!confirm(`Supprimer le tileset « ${T.name} » ?`+(use?`\n\n⚠ ${use} map(s) l'utilisent encore : elles n'auront plus de tileset.`:"")))return;
+ const rmImg=!others&&confirm("Supprimer aussi le fichier image du tileset ?");
+ try{await col().remove(T.id);if(rmImg)await AS().remove(T.image).catch(()=>{});T=null;im=null;const l=await list();if(l.length)await load(l[0].id);else{syncSize();sync();draw();$("info").textContent="Aucun tileset."}}catch(e){alert(e.message)}};
+document.addEventListener("keydown",e=>{if(/INPUT|SELECT/.test(e.target.tagName))return;if(e.ctrlKey&&e.key==="s"){e.preventDefault();save()}else if(e.ctrlKey&&e.key==="a"){e.preventDefault();$("bAll").click()}});
+window.addEventListener("beforeunload",()=>{if(T&&$("st").textContent.startsWith("●"))save()});
+async function init(){msg("");
+ try{await Studio.ensureProject()}catch(e){msg(e.message);return}
+ try{const l=await list();if(l.length)await load((l.find(x=>x.id===localStorage.getItem("jv_lastts_"+Studio.project))||l[0]).id);else{sync();$("info").textContent="Aucun tileset : clique sur « Nouveau (importer une image) »."}}catch(e){msg(e.message)}}
+Studio.onProject(()=>{T=null;im=null;draw();init()});
+sync();init();
+</script>
+</body>
+</html>

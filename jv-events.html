@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="thorankamon">
+<!--
+  © 2026 thorankamon — Tous droits réservés.
+  Utilisation gratuite, modification et redistribution interdites.
+  Licence complète : fichier LICENSE du dépôt GitHub.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion des Events</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:13px Segoe UI,system-ui,sans-serif;background:#e2e8f0;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#1e293b;color:#f1f5f9;flex-wrap:wrap}
+button{font:inherit;background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer}
+button.g{background:#64748b}button.r{background:#ef4444}
+#msg{background:#fef3c7;color:#92400e;padding:8px 12px}
+#cols{flex:1;display:flex;min-height:0}
+#L{width:250px;background:#f8fafc;border-right:1px solid #cbd5e1;overflow:auto;padding:8px;flex-shrink:0}
+#ed{flex:1;min-width:0;padding:10px 14px;background:#fff;display:flex;flex-direction:column}
+.bt{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}.bt .full{grid-column:1/3}
+.it{padding:6px 8px;border-radius:8px;cursor:pointer;border:1px solid transparent}.it:hover{background:#e2e8f0}.it.on{background:#bfdbfe;border-color:#3b82f6}.it small{display:block;color:#64748b}
+h4{margin:12px 0 6px;font-size:13px}.hint{color:#64748b;font-size:12px}
+</style>
+</head>
+<body>
+<div id="top"><b>⚙️ Gestion des Events</b><span id="st"></span></div>
+<div id="msg" hidden></div>
+<div id="cols">
+ <aside id="L">
+  <div class="bt"><button id="nPnj">＋ PNJ</button><button id="nEv">＋ Event invisible</button><button id="nGr">＋ Décor animé</button><button class="g" id="bDup">⧉ Dupliquer</button><button class="r full" id="bDel">🗑 Supprimer</button></div>
+  <div class="hint">Ces events sont des <b>modèles</b> : dans Gestion des MAP, tu peux en insérer un sur la carte, puis le modifier là-bas sans toucher au modèle.</div>
+  <h4>Mes events</h4><div id="list"></div>
+ </aside>
+ <section id="ed"><div class="hint">Choisis un event dans la liste, ou crée-en un nouveau.</div></section>
+</div>
+<script src="studio-api.js"></script>
+<script src="studio-chars.js"></script>
+<script src="studio-events.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const col=()=>Studio.col("events","event");
+let E=null,items=[];
+const msg=x=>{$("msg").hidden=!x;$("msg").textContent=x||""};
+const auto=Studio.autosave(()=>save(),800);
+const touch=()=>{$("st").textContent="● modifié";auto();const o=document.querySelector("#list .it.on");if(o)o.firstChild.textContent=E.name||E.id};
+async function save(){if(!E)return;try{await col().save(E.id,E);$("st").textContent="✔ enregistré "+new Date().toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"})}catch(e){$("st").textContent="⚠ "+e.message}}
+async function list(id){items=await col().list();$("list").innerHTML=items.length?items.map(x=>`<div class="it${x.id===id?" on":""}" data-id="${x.id}">${x.name||x.id}<small>${x.id}</small></div>`).join(""):'<div class="hint">Aucun event.</div>';return items}
+$("list").onclick=e=>{const r=e.target.closest(".it");if(r)load(r.dataset.id)};
+async function load(id){if(E&&$("st").textContent.startsWith("●"))await save();
+ try{E=await col().get(id);E.id=id}catch(e){msg(e.message);return}
+ localStorage.setItem("jv_lastev_"+Studio.project,id);await list(id);$("st").textContent="";
+ await Events.mount($("ed"),E,{onChange:touch})}
+async function create(kind,label){try{const ev=Events.blank(kind);const n=(await col().list()).length+1;ev.name=label+" "+n;ev.kind=kind;const r=await col().add(ev);await load(r.id)}catch(e){alert(e.message)}}
+$("nPnj").onclick=()=>create("pnj","PNJ");$("nEv").onclick=()=>create("event","Event");$("nGr").onclick=()=>create("graphic","Décor");
+$("bDup").onclick=async()=>{if(!E)return;try{await save();const c=JSON.parse(JSON.stringify(E));delete c.id;c.name=(E.name||"Event")+" (copie)";const r=await col().add(c);await load(r.id)}catch(e){alert(e.message)}};
+$("bDel").onclick=async()=>{if(!E||!confirm(`Supprimer l'event « ${E.name||E.id} » ?`))return;try{await col().remove(E.id);E=null;$("ed").innerHTML='<div class="hint">Choisis un event dans la liste, ou crée-en un nouveau.</div>';const l=await list();if(l.length)await load(l[0].id)}catch(e){alert(e.message)}};
+window.addEventListener("beforeunload",()=>{if(E&&$("st").textContent.startsWith("●"))save()});
+let ip=null,again=false;
+function init(){if(ip){again=true;return ip}ip=init0().finally(()=>{ip=null;if(again){again=false;init()}});return ip}
+async function init0(){msg("");try{await Studio.ensureProject();const l=await list();if(l.length)await load((l.find(x=>x.id===localStorage.getItem("jv_lastev_"+Studio.project))||l[0]).id)}catch(e){msg(e.message)}}
+Studio.onProject(()=>{E=null;$("ed").innerHTML="";init()});
+init();
+</script>
+</body>
+</html>
